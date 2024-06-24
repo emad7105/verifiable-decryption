@@ -9,7 +9,7 @@ pip3 show cffi
 ```
 
 This setup is performant if your CPU supports AVX512. To check this, you can run the following command.
-If in the `Flags` section, you find AVX512 or any mention in the second command, your CPU supports it.
+If you find AVX512 or any mention of it in the output of the second command in the `Flags` section, your CPU supports it.
 
 ```bash
 lscpu
