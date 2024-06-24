@@ -8,7 +8,7 @@ Install these tools.
 sudo apt-get update
 sudo apt-get install libmpfr-dev
 sudo apt-get install libgmp-dev
-pip3 show cffi
+pip3 install cffi
 ```
 
 #### Availability of AVX512 
