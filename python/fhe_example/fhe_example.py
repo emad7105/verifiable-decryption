@@ -28,13 +28,13 @@ print("BFV.key-gen.e generated.")
 # e.print()
 
 b = -a*s + e
-b.print()
+#b.print()
 pk = (b, a)
 print("BFV.key-gen.(pk,sk) generated.")
 
 delta = mod//mod_t
 print("BFV.enc.delta generated.")
-print(delta)
+#print("delta = ",delta)
 
 u = poly_t.urandom_static(R, 2, secrets.token_bytes(32), 0)
 print("BFV.enc.u generated.")
@@ -56,28 +56,38 @@ print("BFV.enc.m prepared randomly.")
 # ct1 = (pk[1]*u + e1). 
 
 # print("m_delta=",m_delta.to_list()[:10])
-# print("m*delta=",m.__mul__(delta).to_list()[:10])
+m_modq = poly_t(R, m.to_list())
+#print("m*delta=",m_modq.__mul__(delta).to_list()[:10])
 
-m_delta = poly_t(R, (m.__mul__(delta).to_list()))
+m_delta = poly_t(R, (m_modq.__mul__(delta).to_list()))
+#print("m*delta=",m_delta.to_list()[:10])
 ct0 = (pk[0]*u + e0 + m_delta)
 ct1 = (pk[1]*u + e1)
 
 print("BFV.ct0 =",ct0.to_list()[:10])
 print("BFV.ct1 =",ct1.to_list()[:10])
+print("\n")
 
 # --- decrypt
 s_q = poly_t(R, (s.to_list()))
+#print("s_q=",s_q.to_list()[:10])
 ct_s = (ct0 + ct1*s_q)
 ct_s_coeffs = ct_s.to_list()
+#print("coeffs=",ct_s_coeffs[:10])
 
 ct_s_coeffs = [coeff*mod_t for coeff in ct_s_coeffs]
-print("ct_s_coeffs1=",ct_s_coeffs[:10])
-ct_s_coeffs = [round(coeff/(mod/2)) for coeff in ct_s_coeffs]
-print("ct_s_coeffs2=",ct_s_coeffs[:10])
-m_decrypted = [coeff % mod_t for coeff in ct_s_coeffs]
+#print("coeffs * t=",ct_s_coeffs[:10])
+ct_s_coeffs = [round(coeff/(mod)) for coeff in ct_s_coeffs]
+#print("coeffs / q=",ct_s_coeffs[:10])
+
+#m_decrypted = [coeff % mod_t for coeff in ct_s_coeffs]
+#print("coeffs mod t=",m_decrypted[:10])
+m_decrypted = poly_t(Rt, ct_s_coeffs)
 
 print("m=",m.to_list()[:10])
-print("m_decrypted=",m_decrypted[:10])
+print("m_decrypted=",m_decrypted.to_list()[:10])
+
+print(bool(m == m_decrypted))
 
 
 # b = polyadd(polymul_ntt(negate(a), s, modulus, primitive_root, poly_mod), negate(e), modulus, poly_mod)
