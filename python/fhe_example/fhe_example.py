@@ -4,11 +4,13 @@ from lazer import *     # import lazer python module
 import hashlib          # for SHAKE128
 import secrets          # for RNG
 import numpy as np
+from math import sqrt
+from fhe_example_params import mod, deg, mod_t, v_e
 
 # BFV params
 deg = 2048
-mod = 2**54+1 # CT modulus
-mod_t = 5 # Plaintext modulus (prime)
+# mod = 2**54+1 # CT modulus
+# mod_t = 5 # Plaintext modulus (prime)
 
 R = polyring_t(deg, mod)
 Rt = polyring_t(deg, mod_t) # plaintext
@@ -32,7 +34,7 @@ b = -a*s + e
 pk = (b, a)
 print("BFV.key-gen.(pk,sk) generated.")
 
-delta = mod//mod_t
+delta = round(mod/mod_t)
 print("BFV.enc.delta generated.")
 #print("delta = ",delta)
 
@@ -92,3 +94,60 @@ print(bool(m == m_decrypted))
 
 # b = polyadd(polymul_ntt(negate(a), s, modulus, primitive_root, poly_mod), negate(e), modulus, poly_mod)
 # return (b, a), s
+
+
+# --------------- Proving R1 ----------------
+
+# # B_e
+# sigma_err = 1.55*2 # this set in grandom_static since we used log2o=1
+# B_e = sqrt(2*deg)*sigma_err
+# print("B_e = ", B_e)
+
+# # B_v
+# delta_phi_m = deg # to-do check!!?
+# inf_norm_t = mod_t
+# B_v = mod / (2*delta_phi_m*inf_norm_t) - 0.5
+# print("B_v = ", B_v)
+
+# v_inh
+v_inh = ct0 + ct1 * s - m_delta
+
+# e
+e = pk[1]*s + pk[0]
+
+
+#[-p1 , 1 , 0]
+#[-c1 , 0 , 1]
+# *
+#[s , e , v]
+# =
+# p0 
+# c0 - delta_m
+
+
+A1 = polymat_t(R, 2, 1, None)
+A1.set_col(0, polyvec_t(R, 2, [-pk[1], -ct1]))
+A2 = polymat_t.identity(R, 2)
+A = polymat_t(R, 2, 3, [A1, A2])
+
+seed = b'\0' * 32
+# w = polyvec_t(R, 3, [s,e,v_inh])
+# w = polyvec_t(R, 3, [,s,s])
+w = polyvec_t(R, 3)
+w.brandom(1, seed, 0)
+
+t = -A*w
+
+# shake128 = hashlib.shake_128(bytes.fromhex("01"))
+# P1PP = shake128.digest(32)      # proof system public randomness
+
+
+from _fhe_example_params_cffi import lib 
+prover = lin_prover_state_t(seed, lib.get_params("param"))
+verifier = lin_verifier_state_t(seed, lib.get_params("param"))
+
+prover.set_statement(A, t)
+# prover.set_witness(w)
+
+# print("generate proof ...")
+# proof = prover.prove()
