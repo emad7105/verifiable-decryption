@@ -146,8 +146,71 @@ from _fhe_example_params_cffi import lib
 prover = lin_prover_state_t(seed, lib.get_params("param"))
 verifier = lin_verifier_state_t(seed, lib.get_params("param"))
 
-prover.set_statement(A, t)
+# prover.set_statement(A, t)
 # prover.set_witness(w)
 
 # print("generate proof ...")
 # proof = prover.prove()
+
+
+
+
+
+
+
+
+
+
+# -------------------- vdec_ct.h generator --------------------
+
+def add_header_guards(file_path="vdec_ct.h", guard_name="VDEC_CT_H"):
+    header_guard = f"#ifndef {guard_name}\n#define {guard_name}\n#include <stdint.h>\n\n"
+    try:
+        with open(file_path, "x") as file:
+            file.write(header_guard)
+    except FileExistsError:
+        pass
+
+def add_footer_guards(file_path="vdec_ct.h", guard_name="VDEC_CT_H"):
+    footer_guard = f"\n#endif /* {guard_name} */\n"
+    with open(file_path, "a") as file:
+        file.write(footer_guard)
+
+def write_c_array_to_file(array, file_path="vdec_ct.h", array_name="static_sk", array_type="uint8_t"):
+    add_header_guards(file_path)
+    
+    # Convert the array elements to strings and join them with commas
+    array_elements = ", ".join(map(str, array))
+    
+    # Read the file contents if it exists
+    try:
+        with open(file_path, "r") as file:
+            existing_content = file.read()
+    except FileNotFoundError:
+        existing_content = ""
+
+    # Check if the array definition already exists in the file
+    if f"static const {array_type} {array_name}[]" in existing_content:
+        # Append to the existing array definition
+        existing_content = existing_content.rstrip().rstrip("};\n")
+        array_elements = f", {array_elements}\n}};\n"
+    else:
+        # Create a new array definition
+        array_elements = f"static const {array_type} {array_name}[] = {{\n    {array_elements}\n}};\n"
+
+    # Write or append the formatted array definition to the file
+    with open(file_path, "a") as file:
+        file.write(array_elements)
+
+
+
+write_c_array_to_file(s.to_list(), array_name="static_sk", array_type="uint8_t")
+write_c_array_to_file(ct0.to_list(), array_name="static_ct0", array_type="int64_t")
+write_c_array_to_file(ct1.to_list(), array_name="static_ct1", array_type="int64_t")
+write_c_array_to_file(m_delta.to_list(), array_name="static_m_delta", array_type="int64_t")
+write_c_array_to_file(v_inh.to_list(), array_name="static_v_inh", array_type="int64_t")
+write_c_array_to_file(pk[0].to_list(), array_name="static_pk0", array_type="int64_t")
+write_c_array_to_file(pk[1].to_list(), array_name="static_pk1", array_type="int64_t")
+write_c_array_to_file(e.to_list(), array_name="static_e", array_type="int64_t")
+add_footer_guards()
+
