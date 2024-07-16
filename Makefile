@@ -8,6 +8,14 @@ ADD_CPPFLAGS = -DNDEBUG
 CPPFLAGS += $(ADD_CPPFLAGS)
 LIBS = -lm $(HEXL_DIR)/build/hexl/lib64/libhexl.a -lstdc++
 
+# =======================================
+# Proof of decryption
+# =======================================
+# Define vdec source directory
+VDEC_DIR = vdec
+VDEC_SRC = $(VDEC_DIR)/vdec.c
+# =======================================
+
 # honor user CFLAGS
 ifdef CFLAGS
 buildstr = custom
@@ -35,8 +43,8 @@ endif
 LIBS += $(libgmp)
 
 .PHONY: default all
-default: lib
-all: lib-all
+default: lib vdec
+all: lib-all vdec
 
 
 THIRD_PARTY_DIR = third_party
@@ -658,7 +666,7 @@ doc/html/index.html: $(TEXSOURCES) doc/pdf/lazer_manual.pdf # rely on latexmk fo
 
 .PHONY: html
 clean:
-	rm -f lazer.h liblazer.a liblazer.so liblabrador.a liblabrador.so
+	rm -f lazer.h liblazer.a liblazer.so liblabrador.a liblabrador.so $(VDEC_DIR)/vdec
 	cd scripts && rm -f moduli.sage.py lnp-codegen.sage.py abdlop-codegen.sage.py lnp-quad-codegen.sage.py lnp-quad-eval-codegen.sage.py lnp-tbox-codegen.sage.py lin-codegen.sage.py
 	cd src && rm -f *.o
 	cd src/labrador && rm -f *.o
@@ -668,3 +676,13 @@ clean:
 	cd bench && cd .. && rm -f $(BENCH)
 	cd examples && cd .. && rm -f $(EXAMPLES)
 
+
+# =======================================
+# Proof of decryption
+# =======================================
+# Target for vdec executable
+vdec: $(VDEC_SRC) lazer.h liblazer.a
+	$(CC) $(CPPFLAGS) $(CFLAGS) -I. -I$(VDEC_DIR) -o $(VDEC_DIR)/vdec $(VDEC_SRC) liblazer.a $(LIBS)
+
+.PHONY: vdec
+# =======================================
