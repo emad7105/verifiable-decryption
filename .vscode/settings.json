@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "inner.h": "c",
+        "falcon.h": "c",
+        "lazer.h": "c"
+    }
+}
