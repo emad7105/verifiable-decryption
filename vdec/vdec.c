@@ -2,148 +2,119 @@
 #include "lazer.h"
 #include "vdec_params_tbox.h"
 #include "vdec_ct.h"
+#include <mpfr.h>
 
 #define SEEDLEN 32
 #define OUTLEN 32
 #define N 1 /* number of quadratic equations */
 #define M 4 /* number of quadratic eval equations */
 
+static void vdec_lnp_tbox (uint8_t seed[32], const lnp_tbox_params_t params, 
+                           polyvec_t sk, polyvec_t ct0, polyvec_t ct1, 
+                           polyvec_t m_delta, polyvec_t vinh, polyvec_t e);
+
 int main(void)
 {
     lazer_init();
 
-    // ------ importing ciphertext materials
-    // init Rq
+    /* importing ciphertext materials */
+    /* init Rq */
     abdlop_params_srcptr tbox = params1->tbox;
     polyring_srcptr Rq = tbox->ring;
+    const unsigned int proof_degree = Rq->d;
+    // printf("\nring modulus bits = %d\n", Rq->d);
+    
+    /* fhe parameters */
+    const unsigned int fhe_degree = 2048;
 
 
     /* INIT sk */
-    POLYVEC_T(sk_vec_polys, Rq, 2048/64);
+    POLYVEC_T(sk_vec_polys, Rq, fhe_degree/proof_degree);
     
     poly_ptr poly;
     intvec_ptr coeffs;
-    for (size_t i=0; i<(2048/64) ; i++) {
+    for (size_t i=0; i<(fhe_degree/proof_degree) ; i++) {
         poly = polyvec_get_elem(sk_vec_polys, i);
         coeffs = poly_get_coeffvec (poly);
-        for (size_t j=0; j<64 ; j++) {
-            intvec_set_elem_i64(coeffs,j,static_sk[j+i*64]);
-            // printf("sk elem: %d\n", static_sk[j+i*64]);
+        for (size_t j=0; j<proof_degree ; j++) {
+            intvec_set_elem_i64(coeffs,j,static_sk[j+i*proof_degree]);
+            // printf("sk elem: %d\n", static_sk[j+i*proof_degree]);
         }
     }
-    // printf("number polynomials %d\n", sk_vec_polys->nelems);
-    // printf("number elems in poly %d\n", sk_vec_polys->elems[0].coeffs->nelems);
-    // printf("coeffs poly %d\n", sk_vec_polys->elems[31].coeffs->elems[0]);
-
-    // poly = polyvec_get_elem(sk_vec_polys, 0);
-    // coeffs = poly_get_coeffvec (poly);
-    // printf("First element of sk\n");
-    // for (size_t j=0; j<64 ; j++) {
-    //     printf("%d ", intvec_get_elem_i64(coeffs, j));
-    // }
-    // printf("\n\n");
-
+    // print_polyvec_element("First element of sk", sk_vec_polys, 0, 64);
 
     /* INIT ct0 */
-    POLYVEC_T(ct0_vec_polys, Rq, 2048/64);
+    POLYVEC_T(ct0_vec_polys, Rq, fhe_degree/proof_degree);
     
-    for (size_t i=0; i<(2048/64) ; i++) {
+    for (size_t i=0; i<(fhe_degree/proof_degree) ; i++) {
         poly = polyvec_get_elem(ct0_vec_polys, i);
         coeffs = poly_get_coeffvec (poly);
-        for (size_t j=0; j<64 ; j++) {
-            intvec_set_elem_i64(coeffs,j,static_ct0[j+i*64]);
-            // printf("sk elem: %d\n", static_ct0[j+i*64]);
+        for (size_t j=0; j<proof_degree ; j++) {
+            intvec_set_elem_i64(coeffs,j,static_ct0[j+i*proof_degree]);
+            // printf("sk elem: %d\n", static_ct0[j+i*proof_degree]);
         }
     }
-    // poly = polyvec_get_elem(ct0_vec_polys, 0);
-    // coeffs = poly_get_coeffvec (poly);
-    // printf("First element of ct0\n");
-    // for (size_t j=0; j<64 ; j++) {
-    //     printf("%lld ", intvec_get_elem_i64(coeffs, j));
-    // }
-    // printf("\n\n");
-
+    // print_polyvec_element("First element of ct0", ct0_vec_polys, 0, 64);
 
     /* INIT ct1 */
-    POLYVEC_T(ct1_vec_polys, Rq, 2048/64);
+    POLYVEC_T(ct1_vec_polys, Rq, fhe_degree/proof_degree);
     
-    for (size_t i=0; i<(2048/64) ; i++) {
+    for (size_t i=0; i<(fhe_degree/proof_degree) ; i++) {
         poly = polyvec_get_elem(ct1_vec_polys, i);
         coeffs = poly_get_coeffvec (poly);
         for (size_t j=0; j<64 ; j++) {
-            intvec_set_elem_i64(coeffs,j,static_ct1[j+i*64]);
-            // printf("sk elem: %d\n", static_ct0[j+i*64]);
+            intvec_set_elem_i64(coeffs,j,static_ct1[j+i*proof_degree]);
+            // printf("sk elem: %d\n", static_ct0[j+i*proof_degree]);
         }
     }
-    // poly = polyvec_get_elem(ct1_vec_polys, 0);
-    // coeffs = poly_get_coeffvec (poly);
-    // printf("First element of ct1\n");
-    // for (size_t j=0; j<64 ; j++) {
-    //     printf("%lld ", intvec_get_elem_i64(coeffs, j));
-    // }
-    // printf("\n\n");
-
+    // print_polyvec_element("First element of ct1", ct1_vec_polys, 0, 64);
 
     /* INIT m_delta */
-    POLYVEC_T(mdelta_vec_polys, Rq, 2048/64);
+    POLYVEC_T(mdelta_vec_polys, Rq, fhe_degree/proof_degree);
     
-    for (size_t i=0; i<(2048/64) ; i++) {
+    for (size_t i=0; i<(fhe_degree/proof_degree) ; i++) {
         poly = polyvec_get_elem(mdelta_vec_polys, i);
         coeffs = poly_get_coeffvec (poly);
-        for (size_t j=0; j<64 ; j++) {
-            intvec_set_elem_i64(coeffs,j,static_m_delta[j+i*64]);
+        for (size_t j=0; j<proof_degree ; j++) {
+            intvec_set_elem_i64(coeffs,j,static_m_delta[j+i*proof_degree]);
             //if (i==0)
-            //    printf("sk elem: %d\n", static_m_delta[j+i*64]);
+            //    printf("sk elem: %d\n", static_m_delta[j+i*proof_degree]);
         }
     }
-    // poly = polyvec_get_elem(mdelta_vec_polys, 0);
-    // coeffs = poly_get_coeffvec (poly);
-    // printf("First element of m_delta\n");
-    // for (size_t j=0; j<64 ; j++) {
-    //     printf("%lld ", intvec_get_elem_i64(coeffs, j));
-    // }
-    // printf("\n\n");
-
+    // print_polyvec_element("First element of mdelta", mdelta_vec_polys, 0, 64);
 
     /* INIT v_inh */
-    POLYVEC_T(vinh_vec_polys, Rq, 2048/64);
+    POLYVEC_T(vinh_vec_polys, Rq, fhe_degree/proof_degree);
     
-    for (size_t i=0; i<(2048/64) ; i++) {
+    for (size_t i=0; i<(fhe_degree/proof_degree) ; i++) {
         poly = polyvec_get_elem(vinh_vec_polys, i);
         coeffs = poly_get_coeffvec (poly);
-        for (size_t j=0; j<64 ; j++) {
-            intvec_set_elem_i64(coeffs,j,static_v_inh[j+i*64]);
-            // printf("sk elem: %d\n", static_ct0[j+i*64]);
+        for (size_t j=0; j<proof_degree ; j++) {
+            intvec_set_elem_i64(coeffs,j,static_v_inh[j+i*proof_degree]);
+            // printf("sk elem: %d\n", static_ct0[j+i*proof_degree]);
         }
     }
-    // poly = polyvec_get_elem(vinh_vec_polys, 0);
-    // coeffs = poly_get_coeffvec (poly);
-    // printf("First element of v_inh\n");
-    // for (size_t j=0; j<64 ; j++) {
-    //     printf("%d ", intvec_get_elem_i64(coeffs, j));
-    // }
-    // printf("\n\n");
-
+    // print_polyvec_element("First element of vinh", vinh_vec_polys, 0, 64);
 
     /* INIT e */
-    POLYVEC_T(e_vec_polys, Rq, 2048/64);
+    POLYVEC_T(e_vec_polys, Rq, fhe_degree/proof_degree);
     
-    for (size_t i=0; i<(2048/64) ; i++) {
+    for (size_t i=0; i<(fhe_degree/proof_degree) ; i++) {
         poly = polyvec_get_elem(e_vec_polys, i);
         coeffs = poly_get_coeffvec (poly);
-        for (size_t j=0; j<64 ; j++) {
-            intvec_set_elem_i64(coeffs,j,static_e[j+i*64]);
-            // printf("sk elem: %d\n", static_e[j+i*64]);
+        for (size_t j=0; j<proof_degree ; j++) {
+            intvec_set_elem_i64(coeffs,j,static_e[j+i*proof_degree]);
+            // printf("sk elem: %d\n", static_e[j+i*proof_degree]);
         }
     }
-    // poly = polyvec_get_elem(e_vec_polys, 0);
-    // coeffs = poly_get_coeffvec (poly);
-    // printf("First element of e\n");
-    // for (size_t j=0; j<64 ; j++) {
-    //     printf("%d ", intvec_get_elem_i64(coeffs, j));
-    // }
-    // printf("\n\n");
+    // print_polyvec_element("First element of e", e_vec_polys, 0, 64);
 
+
+    uint8_t seed[32] = { 0 };
+    seed[0] = 2;
+
+    vdec_lnp_tbox (seed, params1, sk_vec_polys, ct0_vec_polys, ct1_vec_polys, 
+                   mdelta_vec_polys, vinh_vec_polys, e_vec_polys);
 
     mpfr_free_cache();
     printf("Finished.\n");
@@ -212,7 +183,9 @@ _scatter_vec(spolyvec_ptr r1, spolyvec_ptr r1_, unsigned int m1,
     r1->sorted = 1;
 }
 
-void test_lnp_tbox(uint8_t seed[32], const lnp_tbox_params_t params)
+static void vdec_lnp_tbox(uint8_t seed[32], const lnp_tbox_params_t params,  
+                          polyvec_t sk, polyvec_t ct0, polyvec_t ct1, 
+                          polyvec_t m_delta, polyvec_t vinh, polyvec_t e)
 {
     abdlop_params_srcptr tbox = params->tbox;
     abdlop_params_srcptr quad = params->quad_eval->quad_many;
@@ -538,6 +511,7 @@ void test_lnp_tbox(uint8_t seed[32], const lnp_tbox_params_t params)
       //Em[i] = NULL;
       //v[i] = NULL;
 #else
+        /*     CHANGE WITNESS RELATIONS HERE     */ 
         polymat_urandom(Es[i], Rq->q, Rq->log2q, seed, 20000);
         polymat_urandom(Em[i], Rq->q, Rq->log2q, seed, 20001);
         polyvec_brandom(vi_[i], 1, seed, 20002);
@@ -579,6 +553,7 @@ void test_lnp_tbox(uint8_t seed[32], const lnp_tbox_params_t params)
     b = lnp_tbox_verify(hashv, h, c, z1, z21, hint, z3, z4, tA1, tB, A1,
                         A2prime, Bprime, R2, r1, r0, N, R2prime, r1prime,
                         r0prime, M, Es, Em, v, Ps, Pm, f, Ds, Dm, u, params);
+    printf("Verification result: %d\n", b);
     //   TEST_EXPECT (b == 1);
     //   TEST_EXPECT (memcmp (hashp, hashv, 32) == 0);
 
@@ -956,6 +931,26 @@ void print_int64_array(const char *description, const int64_t *array, size_t len
     for (size_t i = 0; i < length; i++)
     {
         printf("%lld ", (long long)array[i]);
+    }
+
+    // Print a new line at the end
+    printf("\n");
+}
+
+// Function to print an intvec_t values with a description
+void print_polyvec_element(const char *description, const polyvec_t vec, size_t pos, size_t length)
+{
+    // Print the description
+    printf("\n%s: ", description);
+
+    // Loop through the array and print each value
+    poly_ptr poly;
+    intvec_ptr coeffs;
+    poly = polyvec_get_elem(vec, pos);
+    coeffs = poly_get_coeffvec (poly);
+    for (size_t i = 0; i < length; i++)
+    {
+        printf("%lld ", (long long)intvec_get_elem_i64(coeffs, i));
     }
 
     // Print a new line at the end

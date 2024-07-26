@@ -1,6 +1,8 @@
 name = "params1"            # param variable name
 
-log2q = 56                  # ring modulus bits
+# log2q should be greater than log2(fhe_ctxt_mod) + 2 + log2((d+3)/2) 
+# log2((d+3)/2) is 6(if d=64) or 7(if d=128)
+log2q = 67                  # ring modulus bits
 d = 64                      # ring degree
 
 m1 = 10                     # length of bounded message s1
