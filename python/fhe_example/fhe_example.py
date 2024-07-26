@@ -204,7 +204,7 @@ def write_c_array_to_file(array, file_path="vdec_ct.h", array_name="static_sk", 
 
 
 
-write_c_array_to_file(s.to_list(), array_name="static_sk", array_type="uint8_t")
+write_c_array_to_file(s.to_list(), array_name="static_sk", array_type="int64_t")
 write_c_array_to_file(ct0.to_list(), array_name="static_ct0", array_type="int64_t")
 write_c_array_to_file(ct1.to_list(), array_name="static_ct1", array_type="int64_t")
 write_c_array_to_file(m_delta.to_list(), array_name="static_m_delta", array_type="int64_t")
