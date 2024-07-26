@@ -1,6 +1,6 @@
 name = "params1"            # param variable name
 
-log2q = 40                  # ring modulus bits
+log2q = 56                  # ring modulus bits
 d = 64                      # ring degree
 
 m1 = 10                     # length of bounded message s1

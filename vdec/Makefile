@@ -15,4 +15,4 @@ vdec_params_tbox.h: #fhe_example_params.py
 
 clean:
 	rm -rf __pycache__
-	rm -f *.c *.o *.so
+	rm -f *.o *.so

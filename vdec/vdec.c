@@ -16,8 +16,9 @@ int main(void)
     // init Rq
     abdlop_params_srcptr tbox = params1->tbox;
     polyring_srcptr Rq = tbox->ring;
-    
-    // init sk
+
+
+    /* INIT sk */
     POLYVEC_T(sk_vec_polys, Rq, 2048/64);
     
     poly_ptr poly;
@@ -36,11 +37,112 @@ int main(void)
 
     // poly = polyvec_get_elem(sk_vec_polys, 0);
     // coeffs = poly_get_coeffvec (poly);
-
+    // printf("First element of sk\n");
     // for (size_t j=0; j<64 ; j++) {
     //     printf("%d ", intvec_get_elem_i64(coeffs, j));
     // }
+    // printf("\n\n");
 
+
+    /* INIT ct0 */
+    POLYVEC_T(ct0_vec_polys, Rq, 2048/64);
+    
+    for (size_t i=0; i<(2048/64) ; i++) {
+        poly = polyvec_get_elem(ct0_vec_polys, i);
+        coeffs = poly_get_coeffvec (poly);
+        for (size_t j=0; j<64 ; j++) {
+            intvec_set_elem_i64(coeffs,j,static_ct0[j+i*64]);
+            // printf("sk elem: %d\n", static_ct0[j+i*64]);
+        }
+    }
+    // poly = polyvec_get_elem(ct0_vec_polys, 0);
+    // coeffs = poly_get_coeffvec (poly);
+    // printf("First element of ct0\n");
+    // for (size_t j=0; j<64 ; j++) {
+    //     printf("%lld ", intvec_get_elem_i64(coeffs, j));
+    // }
+    // printf("\n\n");
+
+
+    /* INIT ct1 */
+    POLYVEC_T(ct1_vec_polys, Rq, 2048/64);
+    
+    for (size_t i=0; i<(2048/64) ; i++) {
+        poly = polyvec_get_elem(ct1_vec_polys, i);
+        coeffs = poly_get_coeffvec (poly);
+        for (size_t j=0; j<64 ; j++) {
+            intvec_set_elem_i64(coeffs,j,static_ct1[j+i*64]);
+            // printf("sk elem: %d\n", static_ct0[j+i*64]);
+        }
+    }
+    // poly = polyvec_get_elem(ct1_vec_polys, 0);
+    // coeffs = poly_get_coeffvec (poly);
+    // printf("First element of ct1\n");
+    // for (size_t j=0; j<64 ; j++) {
+    //     printf("%lld ", intvec_get_elem_i64(coeffs, j));
+    // }
+    // printf("\n\n");
+
+
+    /* INIT m_delta */
+    POLYVEC_T(mdelta_vec_polys, Rq, 2048/64);
+    
+    for (size_t i=0; i<(2048/64) ; i++) {
+        poly = polyvec_get_elem(mdelta_vec_polys, i);
+        coeffs = poly_get_coeffvec (poly);
+        for (size_t j=0; j<64 ; j++) {
+            intvec_set_elem_i64(coeffs,j,static_m_delta[j+i*64]);
+            //if (i==0)
+            //    printf("sk elem: %d\n", static_m_delta[j+i*64]);
+        }
+    }
+    // poly = polyvec_get_elem(mdelta_vec_polys, 0);
+    // coeffs = poly_get_coeffvec (poly);
+    // printf("First element of m_delta\n");
+    // for (size_t j=0; j<64 ; j++) {
+    //     printf("%lld ", intvec_get_elem_i64(coeffs, j));
+    // }
+    // printf("\n\n");
+
+
+    /* INIT v_inh */
+    POLYVEC_T(vinh_vec_polys, Rq, 2048/64);
+    
+    for (size_t i=0; i<(2048/64) ; i++) {
+        poly = polyvec_get_elem(vinh_vec_polys, i);
+        coeffs = poly_get_coeffvec (poly);
+        for (size_t j=0; j<64 ; j++) {
+            intvec_set_elem_i64(coeffs,j,static_v_inh[j+i*64]);
+            // printf("sk elem: %d\n", static_ct0[j+i*64]);
+        }
+    }
+    // poly = polyvec_get_elem(vinh_vec_polys, 0);
+    // coeffs = poly_get_coeffvec (poly);
+    // printf("First element of v_inh\n");
+    // for (size_t j=0; j<64 ; j++) {
+    //     printf("%d ", intvec_get_elem_i64(coeffs, j));
+    // }
+    // printf("\n\n");
+
+
+    /* INIT e */
+    POLYVEC_T(e_vec_polys, Rq, 2048/64);
+    
+    for (size_t i=0; i<(2048/64) ; i++) {
+        poly = polyvec_get_elem(e_vec_polys, i);
+        coeffs = poly_get_coeffvec (poly);
+        for (size_t j=0; j<64 ; j++) {
+            intvec_set_elem_i64(coeffs,j,static_e[j+i*64]);
+            // printf("sk elem: %d\n", static_e[j+i*64]);
+        }
+    }
+    // poly = polyvec_get_elem(e_vec_polys, 0);
+    // coeffs = poly_get_coeffvec (poly);
+    // printf("First element of e\n");
+    // for (size_t j=0; j<64 ; j++) {
+    //     printf("%d ", intvec_get_elem_i64(coeffs, j));
+    // }
+    // printf("\n\n");
 
 
     mpfr_free_cache();
