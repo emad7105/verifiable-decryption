@@ -25,27 +25,26 @@ int main(void)
     for (size_t i=0; i<(2048/64) ; i++) {
         poly = polyvec_get_elem(sk_vec_polys, i);
         coeffs = poly_get_coeffvec (poly);
-        // POLY_T(poly, Rq);
-        // poly_set_coeffvec_i64(poly, static_sk[i]);
-        // intvec_urandom (coeffs, q, log2q, seed_cont, i);
-        intvec_set_elem_i64 (coeffs, 0, 0);
+        for (size_t j=0; j<64 ; j++) {
+            intvec_set_elem_i64(coeffs,j,static_sk[j+i*64]);
+            // printf("sk elem: %d\n", static_sk[j+i*64]);
+        }
     }
+    // printf("number polynomials %d\n", sk_vec_polys->nelems);
+    // printf("number elems in poly %d\n", sk_vec_polys->elems[0].coeffs->nelems);
+    // printf("coeffs poly %d\n", sk_vec_polys->elems[31].coeffs->elems[0]);
 
+    // poly = polyvec_get_elem(sk_vec_polys, 0);
+    // coeffs = poly_get_coeffvec (poly);
 
+    // for (size_t j=0; j<64 ; j++) {
+    //     printf("%d ", intvec_get_elem_i64(coeffs, j));
+    // }
 
-
-    // init sk
-    // int64_t sk[2048];
-    // memcpy(sk, static_sk, 2048);
-    print_int64_array("sk = ", static_sk, sizeof(static_sk) / sizeof(static_sk[0]));
-    poly_t sk_poly;
-
-    poly_alloc(sk_poly, Rq);
-    poly_set_coeffvec_i64(sk_poly, static_sk);
 
 
     mpfr_free_cache();
-    printf("Finished.");
+    printf("Finished.\n");
 }
 
 
