@@ -535,6 +535,13 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_tbox_params_t params,
             polymat_set_diag(Es[i], ones_vec, 0);
             polymat_set_zero(Em[i]);
             polyvec_set_zero(v[i]);
+
+            // for (j = 0; j < Es[i]->ncols; j++) {
+            //     polyvec_t tmp_print;
+            //     polymat_get_row(tmp_print, Es[i], j);
+            //     print_polyvec_element("Es[0] column", tmp_print, 62, 64);
+            // }
+
         }
         else if (i==1) {
             polyvec_t ones_vec;
@@ -543,17 +550,40 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_tbox_params_t params,
             polyvec_neg_self(ones_vec);
             polymat_set_diag(Em[i], ones_vec, 0);
 
+            // for (j = 0; j < Em[i]->ncols; j++) {
+            //     polyvec_t tmp_print;
+            //     polymat_get_row(tmp_print, Em[i], j);
+            //     print_polyvec_element("Em[0] column", tmp_print, 30, 64);
+            // }
+
             polyvec_set_zero(v[i]);
             polyvec_set(v[i], ct0);
             polyvec_sub(v[i], v[i], m_delta, 0);
 
             polymat_set_zero(Es[i]);
+            // WORK IN PROGRESS - Rot(ct1)
+            //intvec_ptr ct1_coeffs;
+            //intvec_alloc();
+            for (j = 0; j < ct1->nelems; j++) {
+                poly_ptr poly;
+                intvec_ptr coeffs;
+                poly = polyvec_get_elem(ct1, j);
+                coeffs = poly_get_coeffvec (poly);
+                //print_polyvec_elemsent("Em[0] column", tmp_print, 30, 64);
+            }
+
         }
         else if (i==2) {
             polyvec_t ones_vec;
             polyvec_alloc(ones_vec,Rq,Em[i]->nrows);
             polyvec_set_ones(ones_vec);
             polymat_set_diag(Em[i], ones_vec, 0);
+
+            // for (j = 0; j < Em[i]->ncols; j++) {
+            //     polyvec_t tmp_print;
+            //     polymat_get_row(tmp_print, Em[i], j);
+            //     print_polyvec_element("Em[0] column", tmp_print, 1, 64);
+            // }
 
             polymat_set_zero(Es[i]);
             polyvec_set_zero(v[i]);
