@@ -6,8 +6,8 @@
 
 #define SEEDLEN 32
 #define OUTLEN 32
-#define N 1 /* number of quadratic equations */
-#define M 4 /* number of quadratic eval equations */
+#define N 0 /* number of quadratic equations */
+#define M 0 /* number of quadratic eval equations */
 
 static void vdec_lnp_tbox (uint8_t seed[32], const lnp_tbox_params_t params, 
                            polyvec_t sk, polyvec_t ct0, polyvec_t ct1, 
@@ -379,16 +379,31 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_tbox_params_t params,
         polyvec_alloc(vi_[i], Rq, params->n[i]);
     }
 
-    int_set_i64(lo, -3);
-    int_set_i64(hi, 3);
-    polyvec_urandom_bnd(s1, lo, hi, seed, dom++);
+    /* CHANGE WITNESS HERE */
 
+    // int_set_i64(lo, -3);
+    // int_set_i64(hi, 3);
+    // polyvec_urandom_bnd(s1, lo, hi, seed, dom++);
+
+    // polyvec_get_subvec(upsilon, s1, m1, params->Z, 1);
+
+    // int_set_i64(lo, -1);
+    // int_set_i64(hi, 1);
+    // polyvec_urandom_bnd(s2, lo, hi, seed, dom++);
+    // polyvec_urandom(m, Rq->q, Rq->log2q, seed, dom++);
+
+    // polyvec_get_subvec(s1_, s1, 0, m1, 1);
+    // polyvec_get_subvec(m_, m, 0, l, 1);
+
+    polyvec_t tobe_sk, tobe_e, tobe_m;
+    polyvec_get_subvec(tobe_sk, s1, 0, sk->nelems, 1);
+    polyvec_set(tobe_sk, sk);
+    polyvec_get_subvec(tobe_e, s1, sk->nelems, e->nelems, 1);
+    polyvec_set(tobe_e, e);
     polyvec_get_subvec(upsilon, s1, m1, params->Z, 1);
 
-    int_set_i64(lo, -1);
-    int_set_i64(hi, 1);
-    polyvec_urandom_bnd(s2, lo, hi, seed, dom++);
-    polyvec_urandom(m, Rq->q, Rq->log2q, seed, dom++);
+    polyvec_get_subvec(tobe_m, m, 0, vinh->nelems,1);
+    polyvec_set(tobe_m, vinh);
 
     polyvec_get_subvec(s1_, s1, 0, m1, 1);
     polyvec_get_subvec(m_, m, 0, l, 1);
