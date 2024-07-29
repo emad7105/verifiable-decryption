@@ -527,6 +527,38 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_tbox_params_t params,
       //v[i] = NULL;
 #else
         /*     CHANGE WITNESS RELATIONS HERE     */ 
+
+        if (i==0) {
+            polyvec_t ones_vec;
+            polyvec_alloc(ones_vec,Rq,Es[i]->nrows);
+            polyvec_set_ones(ones_vec);
+            polymat_set_diag(Es[i], ones_vec, 0);
+            polymat_set_zero(Em[i]);
+            polyvec_set_zero(v[i]);
+        }
+        else if (i==1) {
+            polyvec_t ones_vec;
+            polyvec_alloc(ones_vec,Rq,Em[i]->nrows);
+            polyvec_set_ones(ones_vec);
+            polyvec_neg_self(ones_vec);
+            polymat_set_diag(Em[i], ones_vec, 0);
+
+            polyvec_set_zero(v[i]);
+            polyvec_set(v[i], ct0);
+            polyvec_sub(v[i], v[i], m_delta, 0);
+
+            polymat_set_zero(Es[i]);
+        }
+        else if (i==2) {
+            polyvec_t ones_vec;
+            polyvec_alloc(ones_vec,Rq,Em[i]->nrows);
+            polyvec_set_ones(ones_vec);
+            polymat_set_diag(Em[i], ones_vec, 0);
+
+            polymat_set_zero(Es[i]);
+            polyvec_set_zero(v[i]);
+        }
+
         polymat_urandom(Es[i], Rq->q, Rq->log2q, seed, 20000);
         polymat_urandom(Em[i], Rq->q, Rq->log2q, seed, 20001);
         polyvec_brandom(vi_[i], 1, seed, 20002);
