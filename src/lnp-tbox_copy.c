@@ -257,9 +257,6 @@ lnp_tbox_prove (uint8_t hash[32], polyvec_t tB, polyvec_t h, poly_t c,
   ASSERT_ERR (polymat_get_ncols (A2prime) == m2 - kmsis);
   ASSERT_ERR (polymat_get_nrows (Bprime) == l + lext);
   ASSERT_ERR (polymat_get_ncols (Bprime) == m2 - kmsis);
-
-  printf("Eqs to prove: M=%d, N=%d, nex=%d, nprime=%d,  Z=%d,  nbin=%d\n\n", M, N, nex, nprime, Z, nbin);
-
 #if ASSERT == ASSERT_ENABLED
   for (i = 0; i < N; i++)
     {
@@ -405,6 +402,8 @@ lnp_tbox_prove (uint8_t hash[32], polyvec_t tB, polyvec_t h, poly_t c,
   /* generate uniformly random h=g with coeffs 0 and d/2 == 0 */
   DEBUG_PRINTF (DEBUG_LEVEL >= 2, "%s", "sample g");
 
+  //printf("prover =NULL?   Ds: %d | Dm: %d | Ps: %d | Pm: %d \n", Ds==NULL, Dm==NULL, Ps==NULL, Pm==NULL);
+  // printf("lambda = %d\n", lambda);
   for (i = 0; i < lambda / 2; i++)
     {
       poly = polyvec_get_elem (h, i);
@@ -590,6 +589,7 @@ lnp_tbox_prove (uint8_t hash[32], polyvec_t tB, polyvec_t h, poly_t c,
                                      params->quad_eval);
     }
   /* .. then add the internal equations resulting from the norm proofs .. */
+  printf("Eqs to prove: M=%d,  nex=%d, nprime=%d,  Z=%d,  nbin=%d\n\n", M, nex, nprime, Z, nbin);
   STOPWATCH_START (stopwatch_lnp_tbox_prove_sz_beta3,
                    "lnp_tbox_prove_sz_beta3");
   if (nex > 0)
@@ -684,11 +684,23 @@ lnp_tbox_prove (uint8_t hash[32], polyvec_t tB, polyvec_t h, poly_t c,
 #endif
       __evaleq (tmp, R2prime_sz[i], r1prime_sz[i], r0prime_sz[i], subv);
       poly = polyvec_get_elem (h, i); /* gi */
-      poly_add (poly, poly, tmp, 0);  /* hi = gi + schwarz zippel */
+      // printf ("\nzero coeff: %d\n", int_eqzero (poly_get_coeff (poly, 0)) == 1);
+      // printf ("d/2 coeff: %d\n\n", int_eqzero (poly_get_coeff (poly, d / 2)) == 1);
+      
+      // printf ("tmp zero coeff: %d\n", int_eqzero (poly_get_coeff (tmp, 0)) == 1);
+      // printf ("tmp d/2 coeff: %d\n\n", int_eqzero (poly_get_coeff (tmp, d / 2)) == 1);
+      
+      // printf ("R2prime_sz: %d\n", R2prime_sz[i]->nelems);
+      // printf ("r1prime_sz: %d\n", r1prime_sz[i]->nelems);
+      // printf ("r0prime_sz: %d\n\n", r0prime_sz[i]);
+
+      // poly_add (poly, poly, tmp, 0);  /* hi = gi + schwarz zippel */
 
       /* check that sz evaleqs plus garbage term have coeff 0 and d/2 == 0 */
       ASSERT_ERR (int_eqzero (poly_get_coeff (poly, 0)) == 1);
       ASSERT_ERR (int_eqzero (poly_get_coeff (poly, d / 2)) == 1);
+      // printf ("\nzero coeff: %d\n", int_eqzero (poly_get_coeff (poly, 0)) == 1);
+      // printf ("d/2 coeff: %d\n\n", int_eqzero (poly_get_coeff (poly, d / 2)) == 1);
 
       /* build quadeqs */
       DEBUG_PRINTF (DEBUG_LEVEL >= 2, "set up quadeq %u", i);
@@ -941,6 +953,8 @@ lnp_tbox_verify (uint8_t hash[32], polyvec_t h, poly_t c, polyvec_t z1,
   DEBUG_PRINTF (DEBUG_PRINT_FUNCTION_ENTRY, "%s", __func__);
   STOPWATCH_START (stopwatch_lnp_tbox_verify, "lnp_tbox_verify");
 
+  // printf("verifier =NULL?   Ds: %d | Dm: %d | Ps: %d | Pm: %d \n", Ds==NULL, Dm==NULL, Ps==NULL, Pm==NULL);
+
   /* allocate tmp space for 1 quadrativ eq */
   spolymat_alloc (R2t, Rq, n_, n_, NELEMS_DIAG (n_));
   spolymat_set_empty (R2t);
@@ -1132,12 +1146,15 @@ lnp_tbox_verify (uint8_t hash[32], polyvec_t h, poly_t c, polyvec_t z1,
       poly = polyvec_get_elem (h, i);
 
       coeff = poly_get_coeff (poly, 0);
+      // printf("testing h correctness %d\n", i);
       if (int_eqzero (coeff) != 1)
         goto ret;
+      // printf("constant coeff = 0\n");
       coeff = poly_get_coeff (poly, d / 2);
       if (int_eqzero (coeff) != 1)
         goto ret;
     }
+  // printf("passed h coeffs check\n");
 
   /* tB = (tB_,tg,t) */
   polyvec_get_subvec (tg, tB, quad_eval->l, lambda / 2, 1);
@@ -1284,6 +1301,7 @@ lnp_tbox_verify (uint8_t hash[32], polyvec_t h, poly_t c, polyvec_t z1,
   b = lnp_quad_many_verify (hash, c, z1, z21, hint, tA1, tB, A1, A2prime,
                             Bprime, R2prime_sz, r1prime_sz, r0prime_sz,
                             lambda / 2 + 2 + N, quad);
+  //printf("b=%d _lnp_quad_many_verify\n",b);
   if (b != 1)
     goto ret;
 

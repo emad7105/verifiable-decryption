@@ -8,13 +8,15 @@ d = 64                                           # ring degree
 m1 = 64                                          # length of bounded message s1
 #m1 = 10
 alpha = sqrt(d*m1 * 3 ^ 2)                       # bound on s1: l2(s1) <= alpha
-l = 32                                           # length of unbounded message m
+l = 38                                           # length of unbounded message m
 #l = 2
 
 nbin = 0                                         # set length of vector with binary coefficients
 
-n = [64, 32, 32]                                 # set lengths of vectors bounded in l2 norm
-B = [sqrt(128*64), sqrt(128*32),sqrt(128*32)]    # set l2 norm bounds
+n = [0]                                 # set lengths of vectors bounded in l2 norm
+B = [1]    # set l2 norm bounds
+#n = [64, 32, 32]                                 # set lengths of vectors bounded in l2 norm
+#B = [sqrt(128*64), sqrt(128*32),sqrt(128*32)]    # set l2 norm bounds
 #n = [2, 1]                  # set lengths of vectors bounded in l2 norm
 #B = [sqrt(128), sqrt(64)]   # set l2 norm bounds
 

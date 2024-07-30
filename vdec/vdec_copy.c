@@ -6,8 +6,8 @@
 
 #define SEEDLEN 32
 #define OUTLEN 32
-#define N 0 /* number of quadratic equations */
-#define M 0 /* number of quadratic eval equations */
+#define N 1 /* number of quadratic equations */
+#define M 1 /* number of quadratic eval equations */
 
 static void vdec_lnp_tbox (uint8_t seed[32], const lnp_tbox_params_t params, 
                            polyvec_t sk, polyvec_t ct0, polyvec_t ct1, 
@@ -192,14 +192,14 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_tbox_params_t params,
     abdlop_params_srcptr quad_eval = params->quad_eval->quad_eval;
     lnp_quad_eval_params_srcptr quade = params->quad_eval;
     polyring_srcptr Rq = tbox->ring;
-    const unsigned int d = polyring_get_deg (Rq);
+    const unsigned int d = polyring_get_deg(Rq);
     const unsigned int m1 = tbox->m1 - params->Z;
     const unsigned int Z = params->Z;
     const unsigned int l = tbox->l;
-    uint8_t hashp[32] = { 0 };
-    uint8_t hashv[32] = { 0 };
-    INT_T (lo, Rq->q->nlimbs);
-    INT_T (hi, Rq->q->nlimbs);
+    uint8_t hashp[32] = {0};
+    uint8_t hashv[32] = {0};
+    INT_T(lo, Rq->q->nlimbs);
+    INT_T(hi, Rq->q->nlimbs);
     uint32_t dom;
     unsigned int i, j, k, nelems, nrows, ncols;
     spolymat_t R2i[N];
@@ -241,438 +241,403 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_tbox_params_t params,
 
     dom = 0;
 
-    poly_alloc (c, Rq);
-    poly_alloc (r0_, Rq);
-    polyvec_alloc (tmp, Rq, 2 * (m1 + l));
-    polyvec_alloc (s, Rq, 2 * (m1 + l));
-    polyvec_alloc (f, Rq, params->nbin);
-    polyvec_alloc (f_, Rq, params->nbin);
-    polyvec_alloc (u, Rq, params->nprime);
-    polyvec_alloc (u_, Rq, params->nprime);
-    polyvec_alloc (s1, Rq, tbox->m1);
-    polyvec_alloc (s2, Rq, tbox->m2);
-    polyvec_alloc (m, Rq, tbox->l + tbox->lext);
-    polyvec_alloc (tA1, Rq, tbox->kmsis);
-    polyvec_alloc (tA2, Rq, tbox->kmsis);
-    polyvec_alloc (tB, Rq, tbox->l + tbox->lext);
-    polyvec_alloc (h, Rq, quade->lambda / 2);
-    polyvec_alloc (z1, Rq, tbox->m1);
-    polyvec_alloc (z21, Rq, tbox->m2 - tbox->kmsis);
-    polyvec_alloc (hint, Rq, tbox->kmsis);
-    polyvec_alloc (z3, Rq, 256 / d);
-    polyvec_alloc (z4, Rq, 256 / d);
-    spolyvec_alloc (r1_, Rq, n_, n_);
-    spolyvec_alloc (r1err, Rq, n, n);
-    spolyvec_alloc (r1err_, Rq, n, n);
-    spolyvec_alloc (r1primeerr, Rq, np, np);
-    spolyvec_alloc (r1primeerr_, Rq, np, np);
-    polymat_alloc (Ds, Rq, params->nprime, m1);
-    polymat_alloc (Dm, Rq, params->nprime, tbox->l);
-    polymat_alloc (Ps, Rq, params->nbin, m1);
-    polymat_alloc (Pm, Rq, params->nbin, tbox->l);
-    polymat_alloc (A1, Rq, tbox->kmsis, tbox->m1);
-    polymat_alloc (A2prime, Rq, tbox->kmsis, tbox->m2 - tbox->kmsis);
-    polymat_alloc (Bprime, Rq, tbox->l + tbox->lext, tbox->m2 - tbox->kmsis);
-    spolymat_alloc (R2_, Rq, n_, n_, (n_ * n_ - n_) / 2 + n_);
+    poly_alloc(c, Rq);
+    poly_alloc(r0_, Rq);
+    polyvec_alloc(tmp, Rq, 2 * (m1 + l));
+    polyvec_alloc(s, Rq, 2 * (m1 + l));
+    polyvec_alloc(f, Rq, params->nbin);
+    polyvec_alloc(f_, Rq, params->nbin);
+    polyvec_alloc(u, Rq, params->nprime);
+    polyvec_alloc(u_, Rq, params->nprime);
+    polyvec_alloc(s1, Rq, tbox->m1);
+    polyvec_alloc(s2, Rq, tbox->m2);
+    polyvec_alloc(m, Rq, tbox->l + tbox->lext);
+    polyvec_alloc(tA1, Rq, tbox->kmsis);
+    polyvec_alloc(tA2, Rq, tbox->kmsis);
+    polyvec_alloc(tB, Rq, tbox->l + tbox->lext);
+    polyvec_alloc(h, Rq, quade->lambda / 2);
+    polyvec_alloc(z1, Rq, tbox->m1);
+    polyvec_alloc(z21, Rq, tbox->m2 - tbox->kmsis);
+    polyvec_alloc(hint, Rq, tbox->kmsis);
+    polyvec_alloc(z3, Rq, 256 / d);
+    polyvec_alloc(z4, Rq, 256 / d);
+    spolyvec_alloc(r1_, Rq, n_, n_);
+    spolyvec_alloc(r1err, Rq, n, n);
+    spolyvec_alloc(r1err_, Rq, n, n);
+    spolyvec_alloc(r1primeerr, Rq, np, np);
+    spolyvec_alloc(r1primeerr_, Rq, np, np);
+    polymat_alloc(Ds, Rq, params->nprime, m1);
+    polymat_alloc(Dm, Rq, params->nprime, tbox->l);
+    polymat_alloc(Ps, Rq, params->nbin, m1);
+    polymat_alloc(Pm, Rq, params->nbin, tbox->l);
+    polymat_alloc(A1, Rq, tbox->kmsis, tbox->m1);
+    polymat_alloc(A2prime, Rq, tbox->kmsis, tbox->m2 - tbox->kmsis);
+    polymat_alloc(Bprime, Rq, tbox->l + tbox->lext, tbox->m2 - tbox->kmsis);
+    spolymat_alloc(R2_, Rq, n_, n_, (n_ * n_ - n_) / 2 + n_);
 
-    spolymat_alloc (R2err, Rq, n, n, (n * n - n) / 2 + n);
-    spolymat_alloc (R2primeerr, Rq, np, np, (np * np - np) / 2 + np);
-    spolymat_alloc (R2err_, Rq, n, n, (n * n - n) / 2 + n);
-    spolymat_alloc (R2primeerr_, Rq, np, np, (np * np - np) / 2 + np);
+    spolymat_alloc(R2err, Rq, n, n, (n * n - n) / 2 + n);
+    spolymat_alloc(R2primeerr, Rq, np, np, (np * np - np) / 2 + np);
+    spolymat_alloc(R2err_, Rq, n, n, (n * n - n) / 2 + n);
+    spolymat_alloc(R2primeerr_, Rq, np, np, (np * np - np) / 2 + np);
 
     /* error poly */
-    poly_alloc (errpoly, Rq);
+    poly_alloc(errpoly, Rq);
 
     /* error vector large enough to hold smaller error subvecs */
     nelems = 0;
-    nelems = MAX (nelems, quade->lambda / 2);
-    nelems = MAX (nelems, 256 / d);
-    nelems = MAX (nelems, tbox->l + tbox->lext);
-    nelems = MAX (nelems, tbox->m1);
-    nelems = MAX (nelems, tbox->m2 - tbox->kmsis);
-    nelems = MAX (nelems, tbox->kmsis);
-    nelems = MAX (nelems, params->nex);
-    nelems = MAX (nelems, params->nprime);
-    polyvec_alloc (errvec, Rq, nelems);
+    nelems = MAX(nelems, quade->lambda / 2);
+    nelems = MAX(nelems, 256 / d);
+    nelems = MAX(nelems, tbox->l + tbox->lext);
+    nelems = MAX(nelems, tbox->m1);
+    nelems = MAX(nelems, tbox->m2 - tbox->kmsis);
+    nelems = MAX(nelems, tbox->kmsis);
+    nelems = MAX(nelems, params->nex);
+    nelems = MAX(nelems, params->nprime);
+    polyvec_alloc(errvec, Rq, nelems);
 
-    polyvec_get_subvec (herr, errvec, 0, quade->lambda / 2, 1);
-    polyvec_get_subvec (z3err, errvec, 0, 256 / d, 1);
-    polyvec_get_subvec (z4err, errvec, 0, 256 / d, 1);
-    polyvec_get_subvec (tBerr, errvec, 0, tbox->l + tbox->lext, 1);
-    polyvec_get_subvec (z1err, errvec, 0, tbox->m1, 1);
-    polyvec_get_subvec (z21err, errvec, 0, tbox->m2 - tbox->kmsis, 1);
-    polyvec_get_subvec (hinterr, errvec, 0, tbox->kmsis, 1);
-    polyvec_get_subvec (tA1err, errvec, 0, tbox->kmsis, 1);
-    polyvec_get_subvec (verr, errvec, 0, params->n[0], 1);
-    polyvec_get_subvec (uerr, errvec, 0, params->nprime, 1);
-    polyvec_get_subvec (ferr, errvec, 0, params->nbin, 1);
+    polyvec_get_subvec(herr, errvec, 0, quade->lambda / 2, 1);
+    polyvec_get_subvec(z3err, errvec, 0, 256 / d, 1);
+    polyvec_get_subvec(z4err, errvec, 0, 256 / d, 1);
+    polyvec_get_subvec(tBerr, errvec, 0, tbox->l + tbox->lext, 1);
+    polyvec_get_subvec(z1err, errvec, 0, tbox->m1, 1);
+    polyvec_get_subvec(z21err, errvec, 0, tbox->m2 - tbox->kmsis, 1);
+    polyvec_get_subvec(hinterr, errvec, 0, tbox->kmsis, 1);
+    polyvec_get_subvec(tA1err, errvec, 0, tbox->kmsis, 1);
+    polyvec_get_subvec(verr, errvec, 0, params->n[0], 1);
+    polyvec_get_subvec(uerr, errvec, 0, params->nprime, 1);
+    polyvec_get_subvec(ferr, errvec, 0, params->nbin, 1);
 
     /* error matrix large enough to hold smaller error submats */
     nrows = 0;
-    nrows = MAX (nrows, tbox->kmsis);
-    nrows = MAX (nrows, tbox->l + tbox->lext);
-    nrows = MAX (nrows, params->nex);
-    nrows = MAX (nrows, params->nprime);
+    nrows = MAX(nrows, tbox->kmsis);
+    nrows = MAX(nrows, tbox->l + tbox->lext);
+    nrows = MAX(nrows, params->nex);
+    nrows = MAX(nrows, params->nprime);
     ncols = 0;
-    ncols = MAX (ncols, tbox->m1);
-    ncols = MAX (ncols, tbox->l);
-    ncols = MAX (ncols, tbox->m2 - tbox->kmsis);
-    polymat_alloc (errmat, Rq, nrows, ncols);
+    ncols = MAX(ncols, tbox->m1);
+    ncols = MAX(ncols, tbox->l);
+    ncols = MAX(ncols, tbox->m2 - tbox->kmsis);
+    polymat_alloc(errmat, Rq, nrows, ncols);
 
-    polymat_get_submat (A1err, errmat, 0, 0, tbox->kmsis, tbox->m1, 1, 1);
-    polymat_get_submat (A2primeerr, errmat, 0, 0, tbox->kmsis,
-                        tbox->m2 - tbox->kmsis, 1, 1);
-    polymat_get_submat (Bprimeerr, errmat, 0, 0, tbox->l + tbox->lext,
-                        tbox->m2 - tbox->kmsis, 1, 1);
-    polymat_get_submat (Es0err, errmat, 0, 0, params->n[0], m1, 1, 1);
-    polymat_get_submat (Em0err, errmat, 0, 0, params->n[0], l, 1, 1);
-    polymat_get_submat (Pserr, errmat, 0, 0, params->nbin, m1, 1, 1);
-    polymat_get_submat (Pmerr, errmat, 0, 0, params->nbin, l, 1, 1);
-    polymat_get_submat (Dserr, errmat, 0, 0, params->nprime, m1, 1, 1);
-    polymat_get_submat (Dmerr, errmat, 0, 0, params->nprime, l, 1, 1);
+    polymat_get_submat(A1err, errmat, 0, 0, tbox->kmsis, tbox->m1, 1, 1);
+    polymat_get_submat(A2primeerr, errmat, 0, 0, tbox->kmsis,
+                       tbox->m2 - tbox->kmsis, 1, 1);
+    polymat_get_submat(Bprimeerr, errmat, 0, 0, tbox->l + tbox->lext,
+                       tbox->m2 - tbox->kmsis, 1, 1);
+    polymat_get_submat(Es0err, errmat, 0, 0, params->n[0], m1, 1, 1);
+    polymat_get_submat(Em0err, errmat, 0, 0, params->n[0], l, 1, 1);
+    polymat_get_submat(Pserr, errmat, 0, 0, params->nbin, m1, 1, 1);
+    polymat_get_submat(Pmerr, errmat, 0, 0, params->nbin, l, 1, 1);
+    polymat_get_submat(Dserr, errmat, 0, 0, params->nprime, m1, 1, 1);
+    polymat_get_submat(Dmerr, errmat, 0, 0, params->nprime, l, 1, 1);
 
     for (j = 0; j < np; j++)
-        {
+    {
         for (k = j; k < np; k++)
-            {
-            spolymat_insert_elem (R2err, j, k);
-            spolymat_insert_elem (R2primeerr, j, k);
-            }
-        spolyvec_insert_elem (r1err, j);
-        spolyvec_insert_elem (r1primeerr, j);
+        {
+            spolymat_insert_elem(R2err, j, k);
+            spolymat_insert_elem(R2primeerr, j, k);
         }
-    spolyvec_sort (r1err);
-    spolyvec_sort (r1primeerr);
-    spolymat_sort (R2err);
-    spolymat_sort (R2primeerr);
+        spolyvec_insert_elem(r1err, j);
+        spolyvec_insert_elem(r1primeerr, j);
+    }
+    spolyvec_sort(r1err);
+    spolyvec_sort(r1primeerr);
+    spolymat_sort(R2err);
+    spolymat_sort(R2primeerr);
 
     for (i = 0; i < N; i++)
-        {
-        spolymat_alloc (R2i[i], Rq, n, n, (n * n - n) / 2 + n);
+    {
+        spolymat_alloc(R2i[i], Rq, n, n, (n * n - n) / 2 + n);
         R2[i] = R2i[i];
-        spolyvec_alloc (r1i[i], Rq, 2 * (tbox->m1 + quad->l),
-                        2 * (tbox->m1 + quad->l));
+        spolyvec_alloc(r1i[i], Rq, 2 * (tbox->m1 + quad->l),
+                       2 * (tbox->m1 + quad->l));
         r1[i] = r1i[i];
-        poly_alloc (r0i[i], Rq);
+        poly_alloc(r0i[i], Rq);
         r0[i] = r0i[i];
-        }
+    }
 
     for (i = 0; i < M; i++)
-        {
-        spolymat_alloc (R2primei[i], Rq, np, np, (np * np - np) / 2 + np);
+    {
+        spolymat_alloc(R2primei[i], Rq, np, np, (np * np - np) / 2 + np);
         R2prime[i] = R2primei[i];
-        spolyvec_alloc (r1primei[i], Rq, 2 * (tbox->m1 + quad_eval->l),
-                        2 * (tbox->m1 + quad_eval->l));
+        spolyvec_alloc(r1primei[i], Rq, 2 * (tbox->m1 + quad_eval->l),
+                       2 * (tbox->m1 + quad_eval->l));
         r1prime[i] = r1primei[i];
-        poly_alloc (r0primei[i], Rq);
+        poly_alloc(r0primei[i], Rq);
         r0prime[i] = r0primei[i];
-        }
+    }
 
     for (i = 0; i < Z; i++)
-        {
-        polymat_alloc (Esi[i], Rq, params->n[i], m1);
+    {
+        polymat_alloc(Esi[i], Rq, params->n[i], m1);
         Es[i] = Esi[i];
-        polymat_alloc (Emi[i], Rq, params->n[i], tbox->l);
+        polymat_alloc(Emi[i], Rq, params->n[i], tbox->l);
         Em[i] = Emi[i];
-        polyvec_alloc (vi[i], Rq, params->n[i]);
+        polyvec_alloc(vi[i], Rq, params->n[i]);
         v[i] = vi[i];
-        polyvec_alloc (vi_[i], Rq, params->n[i]);
-        }
+        polyvec_alloc(vi_[i], Rq, params->n[i]);
+    }
 
-    /* OUR CUSTOM PROOF: approx L2 norm proof -> quad eval + quad relations */
-    printf("ajtai size: %d, Z size:%d, bdlop size: %d+%d, quad_l:%d, quad_eval_l:%d\n", m1, Z, l, tbox->lext, quad->l, quad_eval->l);
+    /* CHANGE WITNESS HERE */
 
-    // build witness and commit
-    polyvec_t tobe_sk, tobe_e, tobe_m;
-    polyvec_get_subvec(tobe_sk, s1, 0, sk->nelems, 1);
-    polyvec_set(tobe_sk, sk);
-    polyvec_get_subvec(tobe_e, s1, sk->nelems, e->nelems, 1);
-    polyvec_set(tobe_e, e);
-    polyvec_get_subvec(upsilon, s1, m1, params->Z, 1);
+    // polyvec_t tobe_sk, tobe_e, tobe_m;
+    // polyvec_get_subvec(tobe_sk, s1, 0, sk->nelems, 1);
+    // polyvec_set(tobe_sk, sk);
+    // polyvec_get_subvec(tobe_e, s1, sk->nelems, e->nelems, 1);
+    // polyvec_set(tobe_e, e);
+    // polyvec_get_subvec(upsilon, s1, m1, params->Z, 1);
 
-    polyvec_get_subvec(tobe_m, m, 0, vinh->nelems,1);
-    polyvec_set(tobe_m, vinh);
+    // polyvec_get_subvec(tobe_m, m, 0, vinh->nelems,1);
+    // polyvec_set(tobe_m, vinh);
+
     // polyvec_get_subvec(s1_, s1, 0, m1, 1);
     // polyvec_get_subvec(m_, m, 0, l, 1);
 
-    abdlop_keygen (A1, A2prime, Bprime, seed, tbox);
-    abdlop_commit (tA1, tA2, tB, s1, m, s2, A1, A2prime, Bprime, tbox);
-    printf("tA1 size:%d, tA2 size:%d, tB size:%d\n", tA1->nelems, tA2->nelems, tB->nelems);
+    int_set_i64(lo, -3);
+    int_set_i64(hi, 3);
+    polyvec_urandom_bnd(s1, lo, hi, seed, dom++);
 
-    // build u vectors
-    INTVEC_T(u_s_vec, d * sk->nelems, Rq->q->nlimbs);
-    INTVEC_T(u_l_vec, d * vinh->nelems, Rq->q->nlimbs);
-    INTVEC_T(u_v_vec, d * vinh->nelems, Rq->q->nlimbs);
-    intvec_ptr u_s = &u_s_vec;
-    intvec_ptr u_l = &u_l_vec;
-    intvec_ptr u_v = &u_v_vec;
+    polyvec_get_subvec(upsilon, s1, m1, params->Z, 1);
 
-    poly_ptr poly;
-    intvec_ptr coeffs;
+    int_set_i64(lo, -1);
+    int_set_i64(hi, 1);
+    polyvec_urandom_bnd(s2, lo, hi, seed, dom++);
+    polyvec_urandom(m, Rq->q, Rq->log2q, seed, dom++);
 
-    // u_s
-    for (i=0; i<sk->nelems; i++) {
-        poly = polyvec_get_elem(sk, i);     
-        coeffs = poly_get_coeffvec (poly);
-        for (j=0; j<d; j++) {
-            intvec_set_elem(u_s, i*d+j, intvec_get_elem(coeffs, j));
-        }
-    }
-    // print_polyvec_element("element of sk", sk, 31, 64);
-    // printf("u_s nelems = %d\n", u_s->nelems);
-    // for (i=0; i<d; i++) {
-    //     printf("%lld ", intvec_get_elem_i64(u_s, i+31*d));
-    // }
-    // printf("\n\n");
-
-    // u_v
-    for (i=0; i<vinh->nelems; i++) {
-        poly = polyvec_get_elem(vinh, i);     
-        coeffs = poly_get_coeffvec (poly);
-        for (j=0; j<d; j++) {
-            intvec_set_elem(u_v, i*d+j, intvec_get_elem(coeffs, j));
-        }
-    }
-    // print_polyvec_element("element of vinh", vinh, 31, 64);
-    // printf("u_s nelems = %d\n", u_v->nelems);
-    // for (i=0; i<d; i++) {
-    //     printf("%lld ", intvec_get_elem_i64(u_v, i+31*d));
-    // }
-    // printf("\n\n");
-
-    // u_l
-    printf("start u_l build\n");
-    polyvec_t c0_m_v;
-    polyvec_alloc(c0_m_v, Rq, vinh->nelems);
-    polyvec_sub(c0_m_v, ct0, m_delta, 0);
-    polyvec_sub(c0_m_v, c0_m_v, vinh, 0);
-
-    INTVEC_T(sum_tmp_vec, d * c0_m_v->nelems, Rq->q->nlimbs);
-    intvec_ptr sum_tmp = &sum_tmp_vec;
-    for (i=0; i<c0_m_v->nelems; i++) {
-        poly = polyvec_get_elem(c0_m_v, i); 
-        coeffs = poly_get_coeffvec (poly);
-        for (j=0; j<d; j++) {
-            intvec_set_elem(sum_tmp, i*d+j, intvec_get_elem(coeffs, j));
-        }
-    }
-    // print_polyvec_element("element of vinh", c0_m_v, 31, 64);
-    // printf("u_s nelems = %d\n", sum_tmp->nelems);
-    // for (i=0; i<d; i++) {
-    //     printf("%lld ", intvec_get_elem_i64(sum_tmp, i+31*d));
-    // }
-    // printf("\n\n");
-
-    INTVEC_T(ct1_coeffs_vec, d * c0_m_v->nelems, Rq->q->nlimbs);
-    intvec_ptr ct1_coeffs = &ct1_coeffs_vec;
-    for (i=0; i<ct1->nelems; i++) {
-        poly = polyvec_get_elem(ct1, i);     
-        coeffs = poly_get_coeffvec (poly);
-        for (j=0; j<d; j++) {
-            intvec_set_elem(ct1_coeffs, i*d+j, intvec_get_elem(coeffs, j));
-        }
-    }
-    print_polyvec_element("element of ct1", ct1, 31, 64);
-    for (i=0; i<d; i++) {
-        printf("%lld ", intvec_get_elem_i64(ct1_coeffs, i+31*d));
-    }
-    printf("\n\n");
-
-    INTMAT_T(rot_mat, d*32, d, Rq->q->nlimbs);
-    //intmat_ptr rot = &rot_mat;
-    
-    INTVEC_T(ct1_coeffs_vec2, d * c0_m_v->nelems, Rq->q->nlimbs);
-    intvec_ptr ct1_coeffs2 = &ct1_coeffs_vec2;
-    intvec_lrot(ct1_coeffs2, ct1_coeffs, 1);
-    
-    for (i=0; i<d; i++) {
-        printf("%lld ", intvec_get_elem_i64(ct1_coeffs2, i));
-    }
-    printf("\n\n");
-
-
-
-
-    /* set witness here */
-
-    int_set_i64 (lo, -3);
-    int_set_i64 (hi, 3);
-    polyvec_urandom_bnd (s1, lo, hi, seed, dom++);
-
-    polyvec_get_subvec (upsilon, s1, m1, params->Z, 1);
-
-    int_set_i64 (lo, -1);
-    int_set_i64 (hi, 1);
-    polyvec_urandom_bnd (s2, lo, hi, seed, dom++);
-    polyvec_urandom (m, Rq->q, Rq->log2q, seed, dom++);
-
-    polyvec_get_subvec (s1_, s1, 0, m1, 1);
-    polyvec_get_subvec (m_, m, 0, l, 1);
+    polyvec_get_subvec(s1_, s1, 0, m1, 1);
+    polyvec_get_subvec(m_, m, 0, l, 1);
 
     /* s = (<s1>,<m>) */
 
-    polyvec_get_subvec (asub, s, 0, m1, 2);
-    polyvec_get_subvec (asub_auto, s, 1, m1, 2);
-    polyvec_set (asub, s1_);
-    polyvec_auto (asub_auto, s1_);
+    polyvec_get_subvec(asub, s, 0, m1, 2);
+    polyvec_get_subvec(asub_auto, s, 1, m1, 2);
+    polyvec_set(asub, s1_);
+    polyvec_auto(asub_auto, s1_);
     if (l > 0)
-        {
-        polyvec_get_subvec (bsub, s, m1 * 2, l, 2);
-        polyvec_get_subvec (bsub_auto, s, m1 * 2 + 1, l, 2);
-        polyvec_set (bsub, m_);
-        polyvec_auto (bsub_auto, m_);
-        }
+    {
+        polyvec_get_subvec(bsub, s, m1 * 2, l, 2);
+        polyvec_get_subvec(bsub_auto, s, m1 * 2 + 1, l, 2);
+        polyvec_set(bsub, m_);
+        polyvec_auto(bsub_auto, m_);
+    }
 
     /* generate quadratic equations (in s) randomly */
 
     for (i = 0; i < N; i++)
-        {
-        spolymat_set_empty (R2_);
+    {
+        spolymat_set_empty(R2_);
         for (k = 0; k < n_; k++)
-            {
+        {
             for (j = k; j < n_; j++)
-                spolymat_insert_elem (R2_, k, j);
-            }
-        spolyvec_set_empty (r1_);
-        for (j = 0; j < n_; j++)
-            {
-            spolyvec_insert_elem (r1_, j);
-            }
-
-        spolymat_urandom (R2_, Rq->q, Rq->log2q, seed, dom++);
-        spolyvec_urandom (r1_, Rq->q, Rq->log2q, seed, dom++);
-
-        polyvec_dot2 (r0[i], r1_, s);
-        polyvec_mulsparse (tmp, R2_, s);
-        polyvec_fromcrt (tmp);
-        poly_adddot (r0[i], s, tmp, 0);
-        poly_neg_self (r0[i]);
-
-        spolymat_fromcrt (R2_);
-        spolyvec_fromcrt (r1_);
-        poly_fromcrt (r0[i]);
-        ASSERT_ERR (spolymat_is_upperdiag (R2_));
-
-        _scatter_vec (r1[i], r1_, m1, Z);
-        _scatter_smat (R2i[i], R2_, m1, Z, l);
-
-        ASSERT_ERR (spolymat_is_upperdiag (R2i[i]));
+                spolymat_insert_elem(R2_, k, j);
         }
+        spolyvec_set_empty(r1_);
+        for (j = 0; j < n_; j++)
+        {
+            spolyvec_insert_elem(r1_, j);
+        }
+
+        spolymat_urandom(R2_, Rq->q, Rq->log2q, seed, dom++);
+        spolyvec_urandom(r1_, Rq->q, Rq->log2q, seed, dom++);
+
+        polyvec_dot2(r0[i], r1_, s);
+        polyvec_mulsparse(tmp, R2_, s);
+        polyvec_fromcrt(tmp);
+        poly_adddot(r0[i], s, tmp, 0);
+        poly_neg_self(r0[i]);
+
+        spolymat_fromcrt(R2_);
+        spolyvec_fromcrt(r1_);
+        poly_fromcrt(r0[i]);
+        //   ASSERT_ERR (spolymat_is_upperdiag (R2_));
+
+        _scatter_vec(r1[i], r1_, m1, Z);
+        _scatter_smat(R2i[i], R2_, m1, Z, l);
+
+        //   ASSERT_ERR (spolymat_is_upperdiag (R2i[i]));
+    }
 
     for (i = 0; i < M; i++)
-        {
-        spolymat_set_empty (R2_);
+    {
+        spolymat_set_empty(R2_);
         for (k = 0; k < n_; k++)
-            {
+        {
             for (j = k; j < n_; j++)
-                spolymat_insert_elem (R2_, k, j);
-            }
-        spolyvec_set_empty (r1_);
+                spolymat_insert_elem(R2_, k, j);
+        }
+        spolyvec_set_empty(r1_);
         for (j = 0; j < n_; j++)
-            {
-            spolyvec_insert_elem (r1_, j);
-            }
-
-        spolymat_urandom (R2_, Rq->q, Rq->log2q, seed, dom++);
-        spolyvec_urandom (r1_, Rq->q, Rq->log2q, seed, dom++);
-
-        polyvec_dot2 (r0prime[i], r1_, s);
-        polyvec_mulsparse (tmp, R2_, s);
-        polyvec_fromcrt (tmp);
-        poly_adddot (r0prime[i], s, tmp, 0);
-        poly_neg_self (r0prime[i]);
-
-        spolymat_fromcrt (R2_);
-        spolyvec_fromcrt (r1_);
-        poly_fromcrt (r0prime[i]);
-        ASSERT_ERR (spolymat_is_upperdiag (R2_));
-
-        _scatter_vec (r1prime[i], r1_, m1, Z);
-        _scatter_smat (R2primei[i], R2_, m1, Z, l);
-
-        /* only constant coeff needs to be zero */
-        poly_brandom (errpoly, 1, seed, dom++);
-        coeff = poly_get_coeff (errpoly, 0);
-        int_set_i64 (coeff, 0);
-
-        poly_add (r0prime[i], r0prime[i], errpoly, 0);
-        ASSERT_ERR (spolymat_is_upperdiag (R2primei[i]));
+        {
+            spolyvec_insert_elem(r1_, j);
         }
 
-    /* generate equations (in s1,m) for binary vector randomly */
-    int_set_i64 (lo, 0);
-    int_set_i64 (hi, 1);
+        spolymat_urandom(R2_, Rq->q, Rq->log2q, seed, dom++);
+        spolyvec_urandom(r1_, Rq->q, Rq->log2q, seed, dom++);
 
-    polymat_urandom (Ps, Rq->q, Rq->log2q, seed, 10000);
-    polymat_urandom (Pm, Rq->q, Rq->log2q, seed, 10001);
-    polyvec_urandom_bnd (f_, lo, hi, seed, 10002);
-    polyvec_mul (f, Ps, s1_);
-    polyvec_addmul (f, Pm, m_, 0);
-    polyvec_neg_self (f);
-    polyvec_add (f, f, f_, 0);
+        polyvec_dot2(r0prime[i], r1_, s);
+        polyvec_mulsparse(tmp, R2_, s);
+        polyvec_fromcrt(tmp);
+        poly_adddot(r0prime[i], s, tmp, 0);
+        poly_neg_self(r0prime[i]);
+
+        spolymat_fromcrt(R2_);
+        spolyvec_fromcrt(r1_);
+        poly_fromcrt(r0prime[i]);
+        //   ASSERT_ERR (spolymat_is_upperdiag (R2_));
+
+        _scatter_vec(r1prime[i], r1_, m1, Z);
+        _scatter_smat(R2primei[i], R2_, m1, Z, l);
+
+        /* only constant coeff needs to be zero */
+        poly_brandom(errpoly, 1, seed, dom++);
+        coeff = poly_get_coeff(errpoly, 0);
+        int_set_i64(coeff, 0);
+
+        poly_add(r0prime[i], r0prime[i], errpoly, 0);
+        //   ASSERT_ERR (spolymat_is_upperdiag (R2primei[i]));
+    }
+
+    /* generate equations (in s1,m) for binary vector randomly */
+    int_set_i64(lo, 0);
+    int_set_i64(hi, 1);
+
+    polymat_urandom(Ps, Rq->q, Rq->log2q, seed, 10000);
+    polymat_urandom(Pm, Rq->q, Rq->log2q, seed, 10001);
+    polyvec_urandom_bnd(f_, lo, hi, seed, 10002);
+    polyvec_mul(f, Ps, s1_);
+    polyvec_addmul(f, Pm, m_, 0);
+    polyvec_neg_self(f);
+    polyvec_add(f, f, f_, 0);
 
     /* generate equations (in s1,m) for exact 2-norm randomly */
     for (i = 0; i < Z; i++)
-        {
-        INT_T (l2sqr, 2 * Rq->q->nlimbs);
-        INT_T (l2sqr2, 2 * Rq->q->nlimbs);
+    {
+        INT_T(l2sqr, 2 * Rq->q->nlimbs);
+        INT_T(l2sqr2, 2 * Rq->q->nlimbs);
 
-    #if 0
-        polymat_set_zero (Es[i]);
-        polymat_set_zero (Em[i]);
-        polyvec_set_zero (v[i]);
-        polyvec_set_zero (vi_[i]);
+#if 0
+      polymat_set_zero (Es[i]);
+      polymat_set_zero (Em[i]);
+      polyvec_set_zero (v[i]);
+      polyvec_set_zero (vi_[i]);
 
-        //Es[i] = NULL;
-        //Em[i] = NULL;
-        //v[i] = NULL;
-    #else
-        polymat_urandom (Es[i], Rq->q, Rq->log2q, seed, 20000);
-        polymat_urandom (Em[i], Rq->q, Rq->log2q, seed, 20001);
-        polyvec_brandom (vi_[i], 1, seed, 20002);
-        polyvec_mul (v[i], Es[i], s1_);
-        polyvec_addmul (v[i], Em[i], m_, 0);
-        polyvec_neg_self (v[i]);
-        polyvec_add (v[i], v[i], vi_[i], 0);
-    #endif
+      //Es[i] = NULL;
+      //Em[i] = NULL;
+      //v[i] = NULL;
+#else
+        /*     CHANGE WITNESS RELATIONS HERE     */ 
 
-        int_set (l2sqr2, params->l2Bsqr[i]);
-        polyvec_l2sqr (l2sqr, vi_[i]);
-        int_sub (l2sqr2, l2sqr2, l2sqr);
-        int_binexp (polyvec_get_elem (upsilon, i), NULL, l2sqr2);
-        }
+        // if (i==0) {
+        //     polyvec_t ones_vec;
+        //     polyvec_alloc(ones_vec,Rq,Es[i]->nrows);
+        //     polyvec_set_ones(ones_vec);
+        //     polymat_set_diag(Es[i], ones_vec, 0);
+        //     polymat_set_zero(Em[i]);
+        //     polyvec_set_zero(v[i]);
 
-    polymat_urandom (Ds, Rq->q, Rq->log2q, seed, 30000);
-    polymat_urandom (Dm, Rq->q, Rq->log2q, seed, 30001);
-    polyvec_brandom (u_, 4, seed, 30002);
-    polyvec_mul (u, Ds, s1_);
-    polyvec_addmul (u, Dm, m_, 0);
-    polyvec_neg_self (u);
-    polyvec_add (u, u, u_, 0);
+        //     // for (j = 0; j < Es[i]->ncols; j++) {
+        //     //     polyvec_t tmp_print;
+        //     //     polymat_get_row(tmp_print, Es[i], j);
+        //     //     print_polyvec_element("Es[0] column", tmp_print, 62, 64);
+        //     // }
+
+        // }
+        // else if (i==1) {
+        //     polyvec_t ones_vec;
+        //     polyvec_alloc(ones_vec,Rq,Em[i]->nrows);
+        //     polyvec_set_ones(ones_vec);
+        //     polyvec_neg_self(ones_vec);
+        //     polymat_set_diag(Em[i], ones_vec, 0);
+
+        //     // for (j = 0; j < Em[i]->ncols; j++) {
+        //     //     polyvec_t tmp_print;
+        //     //     polymat_get_row(tmp_print, Em[i], j);
+        //     //     print_polyvec_element("Em[0] column", tmp_print, 30, 64);
+        //     // }
+
+        //     polyvec_set_zero(v[i]);
+        //     polyvec_set(v[i], ct0);
+        //     polyvec_sub(v[i], v[i], m_delta, 0);
+
+        //     polymat_set_zero(Es[i]);
+        //     // WORK IN PROGRESS - Rot(ct1)
+        //     //intvec_ptr ct1_coeffs;
+        //     //intvec_alloc();
+        //     for (j = 0; j < ct1->nelems; j++) {
+        //         poly_ptr poly;
+        //         intvec_ptr coeffs;
+        //         poly = polyvec_get_elem(ct1, j);
+        //         coeffs = poly_get_coeffvec (poly);
+        //         //print_polyvec_elemsent("Em[0] column", tmp_print, 30, 64);
+        //     }
+
+        // }
+        // else if (i==2) {
+        //     polyvec_t ones_vec;
+        //     polyvec_alloc(ones_vec,Rq,Em[i]->nrows);
+        //     polyvec_set_ones(ones_vec);
+        //     polymat_set_diag(Em[i], ones_vec, 0);
+
+        //     // for (j = 0; j < Em[i]->ncols; j++) {
+        //     //     polyvec_t tmp_print;
+        //     //     polymat_get_row(tmp_print, Em[i], j);
+        //     //     print_polyvec_element("Em[0] column", tmp_print, 1, 64);
+        //     // }
+
+        //     polymat_set_zero(Es[i]);
+        //     polyvec_set_zero(v[i]);
+        // }
+
+        polymat_urandom(Es[i], Rq->q, Rq->log2q, seed, 20000);
+        polymat_urandom(Em[i], Rq->q, Rq->log2q, seed, 20001);
+        polyvec_brandom(vi_[i], 1, seed, 20002);
+        polyvec_mul(v[i], Es[i], s1_);
+        polyvec_addmul(v[i], Em[i], m_, 0);
+        polyvec_neg_self(v[i]);
+        polyvec_add(v[i], v[i], vi_[i], 0);
+#endif
+
+        int_set(l2sqr2, params->l2Bsqr[i]);
+        polyvec_l2sqr(l2sqr, vi_[i]);
+        int_sub(l2sqr2, l2sqr2, l2sqr);
+        int_binexp(polyvec_get_elem(upsilon, i), NULL, l2sqr2);
+    }
+
+    polymat_urandom(Ds, Rq->q, Rq->log2q, seed, 30000);
+    polymat_urandom(Dm, Rq->q, Rq->log2q, seed, 30001);
+    polyvec_brandom(u_, 4, seed, 30002);
+    polyvec_mul(u, Ds, s1_);
+    polyvec_addmul(u, Dm, m_, 0);
+    polyvec_neg_self(u);
+    polyvec_add(u, u, u_, 0);
 
     /* generate public parameters */
 
-    abdlop_keygen (A1, A2prime, Bprime, seed, tbox);
+    abdlop_keygen(A1, A2prime, Bprime, seed, tbox);
 
     /* generate proof */
-    memset (hashp, 0xff, 32);
-    abdlop_commit (tA1, tA2, tB, s1, m, s2, A1, A2prime, Bprime, tbox);
 
-    // lnp_tbox_prove (hashp, tB, h, c, z1, z21, hint, z3, z4, s1, m, s2, tA2, A1,
-    //                 A2prime, Bprime, R2, r1, N, R2prime, r1prime, r0prime, M, NULL,
-    //                 NULL, NULL, Ps, Pm, f, Ds, Dm, u, seed, params);
-    lnp_tbox_prove (hashp, tB, h, c, z1, z21, hint, z3, z4, s1, m, s2, tA2, A1,
-                    A2prime, Bprime, R2, r1, N, R2prime, r1prime, r0prime, M, Es,
-                    Em, v, Ps, Pm, f, Ds, Dm, u, seed, params);
+    memset(hashp, 0xff, 32);
+    abdlop_commit(tA1, tA2, tB, s1, m, s2, A1, A2prime, Bprime, tbox);
+
+    lnp_tbox_prove(hashp, tB, h, c, z1, z21, hint, z3, z4, s1, m, s2, tA2, A1,
+                   A2prime, Bprime, R2, r1, N, R2prime, r1prime, r0prime, M, Es,
+                   Em, v, Ps, Pm, f, Ds, Dm, u, seed, params);
+    
+    // lnp_tbox_prove(hashp, tB, h, c, z1, z21, hint, z3, z4, s1, m, s2, tA2, A1,
+    //                A2prime, Bprime, R2, r1, N, R2prime, r1prime, r0prime, M, Es,
+    //                Em, v, NULL, NULL, NULL, Ds, Dm, u, seed, params);
 
     /* expect successful verification */
-    memset (hashv, 0xff, 32);
-    // b = lnp_tbox_verify (hashv, h, c, z1, z21, hint, z3, z4, tA1, tB, A1,
-    //                     A2prime, Bprime, R2, r1, r0, N, R2prime, r1prime,
-    //                     r0prime, M, NULL, NULL, NULL, Ps, Pm, f, Ds, Dm, u, params);
-    b = lnp_tbox_verify (hashv, h, c, z1, z21, hint, z3, z4, tA1, tB, A1,
+    memset(hashv, 0xff, 32);
+    b = lnp_tbox_verify(hashv, h, c, z1, z21, hint, z3, z4, tA1, tB, A1,
                         A2prime, Bprime, R2, r1, r0, N, R2prime, r1prime,
                         r0prime, M, Es, Em, v, Ps, Pm, f, Ds, Dm, u, params);
+    
+    // b = lnp_tbox_verify(hashv, h, c, z1, z21, hint, z3, z4, tA1, tB, A1,
+    //                     A2prime, Bprime, R2, r1, r0, N, R2prime, r1prime,
+    //                     r0prime, M, Es, Em, v, NULL, NULL, NULL, Ds, Dm, u, params);
     printf("Verification result: %d\n", b);
     //   TEST_EXPECT (b == 1);
     //   TEST_EXPECT (memcmp (hashp, hashv, 32) == 0);
