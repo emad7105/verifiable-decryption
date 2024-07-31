@@ -447,6 +447,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_tbox_params_t params,
     polyvec_sub(c0_m_v, ct0, m_delta, 0);
     polyvec_sub(c0_m_v, c0_m_v, vinh, 0);
 
+    // generate intvec with coeefs of ct0 - delta_m - vinh
     INTVEC_T(sum_tmp_vec, d * c0_m_v->nelems, Rq->q->nlimbs);
     intvec_ptr sum_tmp = &sum_tmp_vec;
     for (i=0; i<c0_m_v->nelems; i++) {
@@ -463,6 +464,12 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_tbox_params_t params,
     // }
     // printf("\n\n");
 
+    // generate intvec with coeffs of ct1, to rotations and
+    // dot product with u_s
+    INTVEC_T(rot_s_vec, d * c0_m_v->nelems, Rq->q->nlimbs);
+    intvec_ptr rot_s = &rot_s_vec;
+
+    // getting ct1 coeffs
     INTVEC_T(ct1_coeffs_vec, d * c0_m_v->nelems, Rq->q->nlimbs);
     intvec_ptr ct1_coeffs = &ct1_coeffs_vec;
     for (i=0; i<ct1->nelems; i++) {
@@ -472,23 +479,43 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_tbox_params_t params,
             intvec_set_elem(ct1_coeffs, i*d+j, intvec_get_elem(coeffs, j));
         }
     }
-    print_polyvec_element("element of ct1", ct1, 31, 64);
-    for (i=0; i<d; i++) {
-        printf("%lld ", intvec_get_elem_i64(ct1_coeffs, i+31*d));
-    }
-    printf("\n\n");
+    // print_polyvec_element("element of ct1", ct1, 31, 64);
+    // for (i=0; i<d; i++) {
+    //     printf("%lld ", intvec_get_elem_i64(ct1_coeffs, i+31*d));
+    // }
+    // printf("\n\n");
 
-    INTMAT_T(rot_mat, d*32, d, Rq->q->nlimbs);
-    //intmat_ptr rot = &rot_mat;
     
     INTVEC_T(ct1_coeffs_vec2, d * c0_m_v->nelems, Rq->q->nlimbs);
     intvec_ptr ct1_coeffs2 = &ct1_coeffs_vec2;
-    intvec_lrot(ct1_coeffs2, ct1_coeffs, 1);
-    
-    for (i=0; i<d; i++) {
-        printf("%lld ", intvec_get_elem_i64(ct1_coeffs2, i));
+
+    // rotating coeffs of ct1 and multiplying with u_s
+    INT_T (new, 2 * Rq->q->nlimbs);
+    for (i=0; i<ct1_coeffs2->nelems; i++) {
+        intvec_lrot_pos(ct1_coeffs2, ct1_coeffs, i);
+        intvec_dot(new, ct1_coeffs_vec2, u_s_vec);
+
+        // do we need to do mod and redc?
+        //printf("new1: %lld\n", int_get_i64(new));
+        int_mod(new, new, Rq->q);
+        //printf("new2: %lld\n", int_get_i64(new));
+        int_redc(new, new, Rq->q);
+        //printf("new3: %lld\n", int_get_i64(new));
+        intvec_set_elem(rot_s, i, new);
+
+        //printf("%lld ", intvec_get_elem_i64(ct1_coeffs2, i));
     }
-    printf("\n\n");
+    // printf("\n\n");
+    //     for (i=rot_s->nelems - d; i<rot_s->nelems; i++) {
+    //     printf("%lld ", intvec_get_elem_i64(rot_s, i));
+    // }
+    // printf("\n\n");
+    // printf("rot_s nelems: %d\n", rot_s->nelems);
+
+    // printf("ct1_1: %lld \n", intvec_get_elem_i64(ct1_coeffs, 0));
+    // printf("ct1_2: %lld \n", intvec_get_elem_i64(ct1_coeffs2, ct1_coeffs->nelems - 1));
+
+
 
 
 
@@ -1075,4 +1102,29 @@ void print_polyvec_element(const char *description, const polyvec_t vec, size_t 
 
     // Print a new line at the end
     printf("\n");
+}
+
+void
+intvec_lrot_pos (intvec_t r, const intvec_t a, unsigned int n)
+{
+  const unsigned int nelems = r->nelems;
+  unsigned int i;
+  int_ptr t;
+  INTVEC_T (tmp, r->nelems, r->nlimbs);
+
+  ASSERT_ERR (r->nelems == a->nelems);
+  ASSERT_ERR (r->nlimbs == a->nlimbs);
+  ASSERT_ERR (n < nelems);
+
+  for (i = 1; i <= n; i++)
+    {
+      t = intvec_get_elem (tmp, n - i);
+      int_set (t, intvec_get_elem_src (a, nelems - i));
+    }
+  for (i = n; i < nelems; i++)
+    {
+      intvec_set_elem (tmp, i, intvec_get_elem_src (a, i - n));
+    }
+
+  intvec_set (r, tmp);
 }
