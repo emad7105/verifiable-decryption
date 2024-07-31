@@ -11,7 +11,7 @@
 
 static void vdec_lnp_tbox (uint8_t seed[32], const lnp_tbox_params_t params, 
                            polyvec_t sk, polyvec_t ct0, polyvec_t ct1, 
-                           polyvec_t m_delta, polyvec_t vinh, polyvec_t e);
+                           polyvec_t m_delta, polyvec_t vinh, polyvec_t e, int_t fhe_modulus);
 
 int main(void)
 {
@@ -26,7 +26,9 @@ int main(void)
     
     /* fhe parameters */
     const unsigned int fhe_degree = 2048;
-
+    const int_t fhe_modulus;
+    int_alloc(fhe_modulus, Rq->q->nlimbs);
+    int_set_i64(fhe_modulus, 2^54+1);
 
     /* INIT sk */
     POLYVEC_T(sk_vec_polys, Rq, fhe_degree/proof_degree);
@@ -114,7 +116,7 @@ int main(void)
     seed[0] = 2;
 
     vdec_lnp_tbox (seed, params1, sk_vec_polys, ct0_vec_polys, ct1_vec_polys, 
-                   mdelta_vec_polys, vinh_vec_polys, e_vec_polys);
+                   mdelta_vec_polys, vinh_vec_polys, e_vec_polys, fhe_modulus);
 
     mpfr_free_cache();
     printf("Finished.\n");
@@ -185,7 +187,7 @@ _scatter_vec(spolyvec_ptr r1, spolyvec_ptr r1_, unsigned int m1,
 
 static void vdec_lnp_tbox(uint8_t seed[32], const lnp_tbox_params_t params,  
                           polyvec_t sk, polyvec_t ct0, polyvec_t ct1, 
-                          polyvec_t m_delta, polyvec_t vinh, polyvec_t e)
+                          polyvec_t m_delta, polyvec_t vinh, polyvec_t e, int_t fhe_modulus)
 {
     abdlop_params_srcptr tbox = params->tbox;
     abdlop_params_srcptr quad = params->quad_eval->quad_many;
@@ -447,7 +449,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_tbox_params_t params,
     polyvec_sub(c0_m_v, ct0, m_delta, 0);
     polyvec_sub(c0_m_v, c0_m_v, vinh, 0);
 
-    // generate intvec with coeefs of ct0 - delta_m - vinh
+    // generate intvec with coeffs of ct0 - delta_m - vinh
     INTVEC_T(sum_tmp_vec, d * c0_m_v->nelems, Rq->q->nlimbs);
     intvec_ptr sum_tmp = &sum_tmp_vec;
     for (i=0; i<c0_m_v->nelems; i++) {
@@ -499,7 +501,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_tbox_params_t params,
         //printf("new1: %lld\n", int_get_i64(new));
         int_mod(new, new, Rq->q);
         //printf("new2: %lld\n", int_get_i64(new));
-        int_redc(new, new, Rq->q);
+        //int_redc(new, new, Rq->q);
         //printf("new3: %lld\n", int_get_i64(new));
         intvec_set_elem(rot_s, i, new);
 
@@ -514,6 +516,76 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_tbox_params_t params,
 
     // printf("ct1_1: %lld \n", intvec_get_elem_i64(ct1_coeffs, 0));
     // printf("ct1_2: %lld \n", intvec_get_elem_i64(ct1_coeffs2, ct1_coeffs->nelems - 1));
+
+    // adding other parts of u_l
+    intvec_add(u_l, u_l, sum_tmp);
+    
+    // dividing by q
+    INT_T (inv_fhe_q, Rq->q->nlimbs);
+    int_invmod(inv_fhe_q, fhe_modulus, Rq->q);
+    
+    for (i=0; i<u_l->nelems; i++) {
+        int_ptr tmp_ul;
+        tmp_ul = intvec_get_elem(u_l, i);
+        int_mul(tmp_ul, tmp_ul, inv_fhe_q);
+        int_mod(tmp_ul, tmp_ul, Rq->q);
+    }
+
+
+    // sample y's and b's
+    INTVEC_T (ys_coeffs, 256, int_get_nlimbs (Rq->q));
+    INTVEC_T (yl_coeffs, 256, int_get_nlimbs (Rq->q));
+    INTVEC_T (yv_coeffs, 256, int_get_nlimbs (Rq->q));
+    INTVEC_T (zs_coeffs, 256, int_get_nlimbs (Rq->q));
+    INTVEC_T (zl_coeffs, 256, int_get_nlimbs (Rq->q));
+    INTVEC_T (zv_coeffs, 256, int_get_nlimbs (Rq->q));
+    polyvec_t ys_, yl_, yv_, tys, tyl, tyv_, 
+              tbeta, beta, ys, yl, yv, zs_, zl_, zv_;
+    polymat_t Bys, Byl, Byv, Bbeta;
+    int beta_s = 0, beta_l = 0, beta_v;
+
+    polyvec_alloc (ys, Rq, 256 / d);
+    polyvec_alloc (yl, Rq, 256 / d);
+    polyvec_alloc (yv, Rq, 256 / d);
+    polyvec_alloc (zs_, Rq, 256 / d);
+    polyvec_alloc (zl_, Rq, 256 / d);
+    polyvec_alloc (zv_, Rq, 256 / d);
+
+    // TRYING STUFF
+    uint8_t expseed[3 * 32];
+    shake128_state_t hstate;
+    shake128_init (hstate);
+    shake128_absorb (hstate, seed, 32);
+    shake128_squeeze (hstate, expseed, sizeof (expseed));
+    shake128_clear (hstate);
+
+    uint8_t rbits;
+    unsigned int nrbits;
+
+    printf("trying to build y_s\n");
+    /* y4, append to m  */
+    polyvec_grandom (ys, params->log2stdev4, expseed, dom++);
+    polyvec_set (ys_, ys);
+
+    printf("trying to build y_s\n");
+    // printf ("y4:\n");
+    // polyvec_dump (y4);
+
+    /* ty4 */
+    polyvec_get_subvec (tys, tB, l, 256 / d, 1);
+    polyvec_set (tys, ys);
+    polyvec_addmul (tys, Bys, s2, 0);
+    polyvec_mod (tys, tys);
+    polyvec_redp (tys, tys);
+    printf("trying to build y_s\n");
+
+    beta_s = (rbits & (1 << (8 - nrbits + 1))) >> (8 - nrbits + 1);
+    beta_s = 1 - 2 * beta_s; /* {0,1} -> {1,-1} */
+    printf("trying to build y_s\n");
+
+    // printf ("beta4 %d\n", beta4);
+    nrbits -= 1;
+
 
 
 
