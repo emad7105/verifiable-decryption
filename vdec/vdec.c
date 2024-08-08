@@ -6,8 +6,8 @@
 
 #define SEEDLEN 32
 #define OUTLEN 32
-#define N 0 /* number of quadratic equations */
-#define M 0 /* number of quadratic eval equations */
+#define N 1 /* number of quadratic equations */
+#define M 1 /* number of quadratic eval equations */
 
 static void vdec_lnp_tbox (uint8_t seed[32], const lnp_tbox_params_t params, 
                            polyvec_t sk, polyvec_t ct0, polyvec_t ct1, 
@@ -385,23 +385,22 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_tbox_params_t params,
     printf("ajtai size: %d, Z size:%d, bdlop size: %d+%d, quad_l:%d, quad_eval_l:%d\n", m1, Z, l, tbox->lext, quad->l, quad_eval->l);
 
     // build witness and commit
-    polyvec_t tobe_sk, tobe_e, tobe_m;
+    polyvec_t tobe_sk, tobe_m; // vectors to be committed using abdlop
     polyvec_get_subvec(tobe_sk, s1, 0, sk->nelems, 1);
     polyvec_set(tobe_sk, sk);
-    polyvec_get_subvec(tobe_e, s1, sk->nelems, e->nelems, 1);
-    polyvec_set(tobe_e, e);
-    polyvec_get_subvec(upsilon, s1, m1, params->Z, 1);
+    polyvec_get_subvec(upsilon, s1, m1, params->Z, 1); // this part we don't need, it is allocated because we used parameters from exact norm
 
     polyvec_get_subvec(tobe_m, m, 0, vinh->nelems,1);
     polyvec_set(tobe_m, vinh);
     // polyvec_get_subvec(s1_, s1, 0, m1, 1);
     // polyvec_get_subvec(m_, m, 0, l, 1);
 
+    // generate abdlop keys and commit to sk (ajtai part) and the vinh (bdlop part)
     abdlop_keygen (A1, A2prime, Bprime, seed, tbox);
     abdlop_commit (tA1, tA2, tB, s1, m, s2, A1, A2prime, Bprime, tbox);
     printf("tA1 size:%d, tA2 size:%d, tB size:%d\n", tA1->nelems, tA2->nelems, tB->nelems);
 
-    // build u vectors
+    // build u vectors - u_s = [sk], u_l = [l_i], u_v = [vinh]
     INTVEC_T(u_s_vec, d * sk->nelems, Rq->q->nlimbs);
     INTVEC_T(u_l_vec, d * vinh->nelems, Rq->q->nlimbs);
     INTVEC_T(u_v_vec, d * vinh->nelems, Rq->q->nlimbs);
@@ -466,7 +465,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_tbox_params_t params,
     // }
     // printf("\n\n");
 
-    // generate intvec with coeffs of ct1, to rotations and
+    // generate intvec with coeffs of ct1, do rotations and
     // dot product with u_s
     INTVEC_T(rot_s_vec, d * c0_m_v->nelems, Rq->q->nlimbs);
     intvec_ptr rot_s = &rot_s_vec;
