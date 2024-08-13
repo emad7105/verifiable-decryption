@@ -574,17 +574,21 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     // dividing by q
     INT_T (inv_fhe_q, Rq->q->nlimbs);
     int_invmod(inv_fhe_q, fhe_modulus, Rq->q);
+    // do we need the next line? here and everywhere after mod?
+    //int_redc(inv_fhe_q, inv_fhe_q, Rq->q);
     
-    // TODO: check why loop below doesn't go well if it goes up to i<u_l->nelems
-    // if I go until the last element of u_l, strange things happen to the first element
     int_ptr tmp_ul;
-    for (i=0; i<u_l->nelems-1; i++) {
+    INT_T (tmp_ul_mult, 2*(Rq->q->nlimbs));
+    for (i=0; i<u_l->nelems; i++) {
         tmp_ul = intvec_get_elem(u_l, i);
-        int_mul(tmp_ul, tmp_ul, inv_fhe_q);
-        int_mod(tmp_ul, tmp_ul, Rq->q);
-        //printf("%lld ", tmp_ul);
+        int_mul(tmp_ul_mult, tmp_ul, inv_fhe_q);
+        int_mod(tmp_ul, tmp_ul_mult, Rq->q);
     }
-    //printf("u_l[0] = %lld, nlimbs = %d\n", intvec_get_elem(u_l, 0), intvec_get_elem(u_l, 0)->nlimbs);
+    //printf("\n\n");
+    // for (i=0; i<u_l->nelems-1; i++)
+    //     printf("(%d, %d) ", intvec_get_elem_i64(u_l, i), intvec_get_elem(u_l, i)->nlimbs);
+    // printf("\n");
+    //printf("u_l[0] = %lld, nlimbs = %d\n", intvec_get_elem_i64(u_l, i), intvec_get_elem(u_l, i)->nlimbs);
 
     printf("finished u_l build\n");
 
