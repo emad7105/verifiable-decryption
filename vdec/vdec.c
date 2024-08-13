@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "lazer.h"
+#include "../src/brandom.h"
 #include "vdec_params_tbox.h"
 //#include "lnp-quad-eval-params1.h"
 #include "vdec_ct.h"
@@ -12,6 +13,9 @@ static void vdec_lnp_tbox (uint8_t seed[32], const lnp_quad_eval_params_t params
                            polyvec_t sk, polyvec_t ct0, polyvec_t ct1, 
                            polyvec_t m_delta, polyvec_t vinh, polyvec_t e, 
                            int_t fhe_modulus, unsigned int fhe_degree);
+
+static inline void _expand_R_i2 (int8_t *Ri, unsigned int ncols, unsigned int i,
+                                const uint8_t cseed[32]);
 
 int main(void)
 {
@@ -416,8 +420,14 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     const unsigned int stdev_l = gamma * sqrt(337) * sqrt(fhe_degree * (vinh->nelems / 32));
     const unsigned int stdev_v = gamma * sqrt(337) * sqrt(fhe_degree);
     const unsigned int log2stdev4 = 1.55; // TODO: set this correctly /* stdev4 = 1.55 * 2^log2stdev2 */
-    const int_srcptr scM4;         /* scaled M4: round(M4 * 2^128) */
-    const int_srcptr stdev4sqr;
+
+    // copied from lnp-tbox-params1.h
+    static const limb_t params1_scM4_limbs[] = {1655797669362676316UL, 318580927907168899UL, 1UL};
+    static const int_t scM4 = {{(limb_t *)params1_scM4_limbs, 3, 0}};
+    static const limb_t params1_stdev4sq_limbs[] = {157450UL, 0UL};
+    static const int_t stdev4sqr = {{(limb_t *)params1_stdev4sq_limbs, 2, 0}};
+    //const int_srcptr scM4;         /* scaled M4: round(M4 * 2^128) */
+    //const int_srcptr stdev4sqr;
 
     const unsigned int d = polyring_get_deg (Rq);
     const unsigned int m1 = abdlop->m1;
@@ -458,7 +468,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
         poly_tmp = polyvec_get_elem(sk, i);     
         coeffs = poly_get_coeffvec (poly_tmp);
         for (j=0; j<d; j++) {
-            intvec_set_elem(u_s, i*d+j, intvec_get_elem(coeffs, j));
+            intvec_set_elem(u_s_vec, i*d+j, intvec_get_elem(coeffs, j));
         }
     }
     // print_polyvec_element("element of sk", sk, 31, 64);
@@ -565,12 +575,16 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     INT_T (inv_fhe_q, Rq->q->nlimbs);
     int_invmod(inv_fhe_q, fhe_modulus, Rq->q);
     
-    for (i=0; i<u_l->nelems; i++) {
-        int_ptr tmp_ul;
+    // TODO: check why loop below doesn't go well if it goes up to i<u_l->nelems
+    // if I go until the last element of u_l, strange things happen to the first element
+    int_ptr tmp_ul;
+    for (i=0; i<u_l->nelems-1; i++) {
         tmp_ul = intvec_get_elem(u_l, i);
         int_mul(tmp_ul, tmp_ul, inv_fhe_q);
         int_mod(tmp_ul, tmp_ul, Rq->q);
+        //printf("%lld ", tmp_ul);
     }
+    //printf("u_l[0] = %lld, nlimbs = %d\n", intvec_get_elem(u_l, 0), intvec_get_elem(u_l, 0)->nlimbs);
 
     printf("finished u_l build\n");
 
@@ -851,10 +865,8 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
             // should I use this or _expand_Rprime_i?
             //_expand_R_i (Ri_l, u_l->nelems, i, cseed);
 
-            printf("creating z_l 1\n");
             for (j = 0; j < u_l->nelems; j++)
             {
-                printf("creating z_l 1.1\n");
                 if (Ri_l[j] == 0)
                 {
                 }
@@ -863,18 +875,13 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
                     ASSERT_ERR (Ri_l[j] == 1 || Ri_l[j] == -1);
 
                     ul_coeff = intvec_get_elem (u_l_vec, j);
-                    printf("creating z_l 1.2\n");
                     
                     int_set (beta_l_Rij_ul_j, ul_coeff);
-                    printf("creating z_l 1.3\n");
                     int_mul_sgn_self (beta_l_Rij_ul_j, Ri_l[j]);
-                    printf("creating z_l 1.4\n");
                     int_add (R_ul_coeff, R_ul_coeff, beta_l_Rij_ul_j);
-                    printf("creating z_l 1.5\n");
                 }
             }
         }
-        printf("creating z_l 2\n");
         intvec_mul_sgn_self (yl_coeffs, beta_l);
         intvec_add (zl_coeffs, zl_coeffs, yl_coeffs);
         printf("created z_l\n");
@@ -895,7 +902,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
             R_uv_coeff = intvec_get_elem (yv_coeffs, i);
 
             // should I use this or _expand_Rprime_i?
-            //_expand_R_i (Ri_v, u_v->nelems, i, cseed);
+            //_expand_R_i2 (Ri_v, u_v->nelems, i, cseed);
 
             for (j = 0; j < u_v->nelems; j++)
             {
@@ -921,14 +928,29 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
 
         /* rejection sampling */
         intvec_mul_sgn_self (ys_coeffs, beta_s); /* revert mul by beta3 */
-
         rej = rej_bimodal (rstate_rej, zs_coeffs, ys_coeffs, scM4, stdev4sqr);
         if (rej) {
-            DEBUG_PRINTF (DEBUG_PRINT_REJ, "%s", "reject s3");
+            DEBUG_PRINTF (DEBUG_PRINT_REJ, "%s", "reject u_s");
             continue;
         }
-        
+        printf("did rejection sampling for z_s\n");
 
+        intvec_mul_sgn_self (yl_coeffs, beta_l); /* revert mul by beta3 */
+        rej = rej_bimodal (rstate_rej, zl_coeffs, yl_coeffs, scM4, stdev4sqr);
+        if (rej) {
+            DEBUG_PRINTF (DEBUG_PRINT_REJ, "%s", "reject u_l");
+            continue;
+        }
+        printf("did rejection sampling for z_l\n");
+
+        intvec_mul_sgn_self (yv_coeffs, beta_v); /* revert mul by beta3 */
+        rej = rej_bimodal (rstate_rej, zv_coeffs, yv_coeffs, scM4, stdev4sqr);
+        if (rej) {
+            DEBUG_PRINTF (DEBUG_PRINT_REJ, "%s", "reject u_v");
+            continue;
+        }
+        printf("did rejection sampling for z_v\n");
+        
 
         break;
     }
@@ -972,6 +994,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     polymat_t Bextprime;
     polymat_get_submat (Bextprime, Bprime, l, 0, lambda / 2, abdlop->m2 - abdlop->kmsis, 1, 1); // is l the correct row
 
+
     // mostly just copied stuff from lnp-tbox --> needs to be changed
     polyvec_free (s); // freeing this because this is used in the original proof from quad_eval_test. Later we can remove this
     polyvec_alloc (s, Rq, 2 * (m1 + l));
@@ -1010,14 +1033,16 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
         intvec_set_elem_i64 (coeffs, d / 2, 0);
     }
 
+
     /* append g to message m */
-    polyvec_get_subvec (subv, m, l, lambda / 2, 1);
-    polyvec_set (subv, h);
+    // polyvec_get_subvec (subv, m, l, lambda / 2, 1);
+    // polyvec_set (subv, h);
 
     /* tg = Bexptprime*s2 + g */
-    polyvec_set (tg, h);
-    polyvec_get_subvec (s2_, s2, 0, abdlop->m2 - abdlop->kmsis, 1);
-    polyvec_addmul (tg, Bextprime, s2_, 0);
+    // polyvec_set (tg, h);
+    // polyvec_get_subvec (s2_, s2, 0, abdlop->m2 - abdlop->kmsis, 1);
+    // polyvec_addmul (tg, Bextprime, s2_, 0);
+
 
 
     /************************************************************************/
@@ -1185,17 +1210,18 @@ intvec_lrot_pos (intvec_t r, const intvec_t a, unsigned int n)
 }
 
 /* expand i-th row of R from cseed and i */
-// static inline void
-// _expand_R_i2 (int8_t *Ri, unsigned int ncols, unsigned int i,
-//              const uint8_t cseed[32])
-// {
-//   _brandom (Ri, ncols, 1, cseed, i);
-// }
+static inline void
+_expand_R_i2 (int8_t *Ri, unsigned int ncols, unsigned int i,
+             const uint8_t cseed[32])
+{
+  _brandom (Ri, ncols, 1, cseed, i);
+}
 
-// /* expand i-th row of Rprime from cseed and 256 + i */
+/* expand i-th row of Rprime from cseed and 256 + i */
 // static inline void
 // _expand_Rprime_i (int8_t *Rprimei, unsigned int ncols, unsigned int i,
 //                   const uint8_t cseed[32])
 // {
 //   _brandom (Rprimei, ncols, 1, cseed, 256 + i);
 // }
+
