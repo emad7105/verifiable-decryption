@@ -416,6 +416,9 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     /*    OUR CUSTOM PROOF: committing to witness + computing u vectors     */
     /*                                                                      */
     /************************************************************************/
+
+    // #region Committing to witness
+
     // all these parameters need to be set correctly
     const unsigned int gamma = 12;
     const unsigned int B_v = 12;
@@ -456,6 +459,10 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     abdlop_commit (tA1, tA2, tB, s1, m, s2, A1, A2prime, Bprime, abdlop);
     printf("tA1 size:%d, tA2 size:%d, tB size:%d\n", tA1->nelems, tA2->nelems, tB->nelems);
     printf("Bprime: %d rows, %d cols\n", Bprime->nrows, Bprime->ncols);
+
+    // #endregion
+
+    // #region build u vectors
 
     // build u vectors - u_s = [sk], u_l = [l_i], u_v = [vinh]
     INTVEC_T(u_s_vec, d * sk->nelems, Rq->q->nlimbs);
@@ -575,7 +582,9 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     // printf("ct1_2: %lld \n", intvec_get_elem_i64(ct1_coeffs2, ct1_coeffs->nelems - 1));
 
     // adding other parts of u_l
-    intvec_add(u_l, u_l, sum_tmp);
+    intvec_add(u_l, u_l, sum_tmp); 
+    // Todo (Emad): u_l was never used before here, and it's not instatiated with zero
+    // Todo (Emad): did you mean =>  intvec_add(u_l, rot_s, sum_tmp);
     
     // dividing by q
     INT_T (inv_fhe_q, Rq->q->nlimbs);
@@ -597,6 +606,8 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     //printf("u_l[0] = %lld, nlimbs = %d\n", intvec_get_elem_i64(u_l, i), intvec_get_elem(u_l, i)->nlimbs);
 
     printf("finished u_l build\n");
+
+    // #endregion
 
     /************************************************************************/
     /*                                                                      */
