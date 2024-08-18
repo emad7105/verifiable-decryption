@@ -36,7 +36,9 @@ int main(void)
 
     /* INIT sk */
     POLYVEC_T(sk_vec_polys, Rq, fhe_degree/proof_degree);
-    
+    printf("fhe_degree: %d\n", fhe_degree);
+    printf("proof_degree: %d\n", proof_degree);
+    printf("fhe_degree/proof_degree: %d\n", fhe_degree/proof_degree);
     poly_ptr poly;
     intvec_ptr coeffs;
     for (size_t i=0; i<(fhe_degree/proof_degree) ; i++) {
@@ -195,6 +197,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
                           polyvec_t m_delta, polyvec_t vinh, polyvec_t e, 
                           int_t fhe_modulus, unsigned int fhe_degree)
 {
+    // #region Copy quad-eval-test.c 
     abdlop_params_srcptr abdlop = params->quad_eval;
     uint8_t hashp[32] = { 0 };
     uint8_t hashv[32] = { 0 };
@@ -405,6 +408,8 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
 
 
     // everything above is from quad-eval-test.c
+    
+    // #endregion
 
     /************************************************************************/
     /*                                                                      */
@@ -538,7 +543,8 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     // }
     // printf("\n\n");
 
-    
+    test_lrot(Rq->q);
+
     INTVEC_T(ct1_coeffs_vec2, d * c0_m_v->nelems, Rq->q->nlimbs);
     intvec_ptr ct1_coeffs2 = &ct1_coeffs_vec2;
 
@@ -1220,6 +1226,60 @@ _expand_R_i2 (int8_t *Ri, unsigned int ncols, unsigned int i,
 {
   _brandom (Ri, ncols, 1, cseed, i);
 }
+
+void test_lrot (const int_t mudulus) {
+    printf("\n- Testig lrot ...\n");
+    // Create a vector with 5 elements
+    INTVEC_T(my_vector, 5, 1);
+
+    // Set elements to 1, 2, 3, 4, 5
+    intvec_set_elem_i64(my_vector, 0, 1);
+    intvec_set_elem_i64(my_vector, 1, 2);
+    intvec_set_elem_i64(my_vector, 2, 3);
+    intvec_set_elem_i64(my_vector, 3, 4);
+    intvec_set_elem_i64(my_vector, 4, 5);
+    printf("my_vector1: " );
+    intvec_dump(my_vector); // prints vector
+
+    INTVEC_T(my_vector2, 5, 1);
+
+    // Set elements to 1, 2, 3, 4, 5
+    intvec_set_elem_i64(my_vector2, 0, 1);
+    intvec_set_elem_i64(my_vector2, 1, 2);
+    intvec_set_elem_i64(my_vector2, 2, 3);
+    intvec_set_elem_i64(my_vector2, 3, 4);
+    intvec_set_elem_i64(my_vector2, 4, 5);
+    printf("my_vector2: " );
+    intvec_dump(my_vector2); // prints vector
+
+
+    INTVEC_T(my_vector_rotated, 5, 1);
+    intvec_ptr my_vector_rotated_ptr = &my_vector_rotated;
+
+    // Rot(my_vector) * my_vector2
+    INTVEC_T(rot_s_vec, 5, 1);
+    INT_T (new, 1);
+    for (int i=0; i<my_vector_rotated_ptr->nelems; i++) {
+        intvec_lrot_pos(my_vector_rotated_ptr, my_vector, i);
+        intvec_dot(new, my_vector_rotated_ptr, my_vector2);
+
+        // do we need to do mod and redc?
+        //printf("new1: %lld\n", int_get_i64(new));
+        int_mod(new, new, mudulus);
+        //printf("new2: %lld\n", int_get_i64(new));
+        //int_redc(new, new, Rq->q);
+        //printf("new3: %lld\n", int_get_i64(new));
+        intvec_set_elem(&rot_s_vec, i, new);
+
+        //printf("%lld ", intvec_get_elem_i64(ct1_coeffs2, i));
+    }
+
+    printf("Rot(my_vector) * my_vector2: " );
+    intvec_dump(rot_s_vec); // prints vector
+
+    printf("- Testig lrot ended.\n");
+}
+
 
 /* expand i-th row of Rprime from cseed and 256 + i */
 // static inline void
