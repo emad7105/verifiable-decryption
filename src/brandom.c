@@ -36,3 +36,11 @@ _brandom (int8_t *vec, unsigned int nelems, unsigned int k,
         }
     }
 }
+
+
+// Wrapper function that is non-static and can be accessed from other files
+void brandom_wrapper(int8_t *vec, unsigned int nelems, unsigned int k,
+                     const uint8_t seed[32], uint64_t dom)
+{
+    _brandom(vec, nelems, k, seed, dom);
+}

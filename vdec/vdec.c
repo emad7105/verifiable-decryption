@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include "lazer.h"
 #include "../src/brandom.h"
+// #include "brandom.h"
 #include "vdec_params_tbox.h"
 //#include "lnp-quad-eval-params1.h"
 #include "vdec_ct.h"
@@ -647,6 +648,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     const unsigned int log2q = polyring_get_log2q (Rq);  
     const unsigned int kmsis = abdlop->kmsis;
     const unsigned int m2 = abdlop->m2;
+    // todo: why not instantiating s3coeffs?
     INTVEC_T (ys_coeffs, 256, int_get_nlimbs (Rq->q));
     INTVEC_T (yl_coeffs, 256, int_get_nlimbs (Rq->q));
     INTVEC_T (yv_coeffs, 256, int_get_nlimbs (Rq->q));
@@ -736,6 +738,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     rng_init (rstate_signs, seed, dom++);
 
 
+    // #region Rejection 
     // --------------------------------------------------------
     // REJECTION SAMPLING BLOCK (big while loop in compute_z34)
     // --------------------------------------------------------
@@ -844,7 +847,9 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
             R_us_coeff = intvec_get_elem (ys_coeffs, i);
 
             // should I use this or _expand_Rprime_i?
-            //_expand_R_i (Ri_s, u_s->nelems, i, cseed);
+            printf("Expanding...\n");
+            _expand_R_i2 (Ri_s, u_s->nelems, i, cseed);
+            printf("Expanded\n");
 
             for (j = 0; j < u_s->nelems; j++)
             {
@@ -976,7 +981,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
         break;
     }
 
-
+    // #endregion
 
 
 
@@ -1235,7 +1240,8 @@ static inline void
 _expand_R_i2 (int8_t *Ri, unsigned int ncols, unsigned int i,
              const uint8_t cseed[32])
 {
-  _brandom (Ri, ncols, 1, cseed, i);
+//   _brandom (Ri, ncols, 1, cseed, i);
+    brandom_wrapper(Ri, ncols, 1, cseed, i);
 }
 
 void test_lrot (const int_t mudulus) {
