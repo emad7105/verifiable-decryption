@@ -133,9 +133,9 @@ hard_mlwe_dim = 64  # guess for upper bound for MLWE dim
 while True:
     delta_mlwe = get_delta_mlwe(nu, hard_mlwe_dim, d, 2 ** log2q)
     if delta_mlwe <= DELTA128:
-        print(f"MLWE dim {hard_mlwe_dim}: hard")
+        #print(f"MLWE dim {hard_mlwe_dim}: hard")
         break
-    print(f"MLWE dim {hard_mlwe_dim}: easy")
+    #print(f"MLWE dim {hard_mlwe_dim}: easy")
     easy_mlwe_dim = hard_mlwe_dim
     hard_mlwe_dim *= 2
 # binary search for smallest MLWE dimension that is still hard
@@ -143,14 +143,14 @@ while True:
     kmlwe = (easy_mlwe_dim + hard_mlwe_dim) / 2
     delta_mlwe = get_delta_mlwe(nu, kmlwe, d, 2 ** log2q)
     if delta_mlwe <= DELTA128:
-        print(f"MLWE dim {kmlwe} : hard")
+      #  print(f"MLWE dim {kmlwe} : hard")
         hard_mlwe_dim = kmlwe
     else:
-        print(f"MLWE dim {kmlwe} : easy")
+       # print(f"MLWE dim {kmlwe} : easy")
         easy_mlwe_dim = kmlwe
     if hard_mlwe_dim == easy_mlwe_dim + 1:
         kmlwe = hard_mlwe_dim
-        print(f"found MLWE dim : {kmlwe}")
+        #print(f"found MLWE dim : {kmlwe}")
         break
 
 
@@ -162,11 +162,11 @@ while True:
     stdev2 = gamma2 * mpf(eta) * mpf(nu) * mp.sqrt(m2 * d)
     stdev2 = round_stdev(stdev2)  # XXX
     gamma2 = stdev2 / (mpf(eta) * mpf(nu) * mp.sqrt(m2 * d))  # XXX
-    print(f"d {d}")
-    print(f"2^log2q {2^log2q}")
-    print(f"kmsis {kmsis}")
-    print(f"Bound {Bound()}")
-    print(f"delta {get_delta_msis(Bound(), kmsis, d, 2 ** log2q)}")
+    #print(f"d {d}")
+    #print(f"2^log2q {2^log2q}")
+    #print(f"kmsis {kmsis}")
+    #print(f"Bound {Bound()}")
+    #print(f"delta {get_delta_msis(Bound(), kmsis, d, 2 ** log2q)}")
     if get_delta_msis(Bound(), kmsis, d, 2 ** log2q) < DELTA128 and Bound() < 2 ** log2q:
         break
 
