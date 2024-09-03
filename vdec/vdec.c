@@ -559,9 +559,11 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     intvec_ptr ct1_coeffs2 = &ct1_coeffs_vec2;
 
     // rotating coeffs of ct1 and multiplying with u_s
+    intvec_reverse(ct1_coeffs, ct1_coeffs);
     INT_T (new, 2 * Rq->q->nlimbs);
     for (i=0; i<ct1_coeffs2->nelems; i++) {
-        intvec_lrot_pos(ct1_coeffs2, ct1_coeffs, i);
+        intvec_lrot_pos(ct1_coeffs2, ct1_coeffs, i+1);
+        //printf("%lld ", intvec_get_elem_i64(ct1_coeffs2, i));
         intvec_dot(new, ct1_coeffs2, u_s);
 
         // do we need to do mod and redc?
@@ -585,7 +587,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     // printf("ct1_2: %lld \n", intvec_get_elem_i64(ct1_coeffs2, ct1_coeffs->nelems - 1));
 
     // adding other parts of u_l
-    intvec_add(u_l, u_l, sum_tmp); 
+    intvec_add(u_l, rot_s, sum_tmp); 
     // Todo (Emad): u_l was never used before here, and it's not instatiated with zero
     // Todo (Emad): did you mean =>  intvec_add(u_l, rot_s, sum_tmp);
     
@@ -1237,6 +1239,25 @@ intvec_lrot_pos (intvec_t r, const intvec_t a, unsigned int n)
   intvec_set (r, tmp);
 }
 
+void
+intvec_reverse (intvec_t r, const intvec_t a)
+{
+  const unsigned int nelems = r->nelems;
+  unsigned int i;
+  //int_ptr t;
+  INTVEC_T (tmp, r->nelems, r->nlimbs);
+
+  ASSERT_ERR (r->nelems == a->nelems);
+  ASSERT_ERR (r->nlimbs == a->nlimbs);
+
+  for (i = 0; i < nelems; i++)
+    {
+      intvec_set_elem (tmp, i, intvec_get_elem_src (a, nelems-1-i));
+    }
+
+  intvec_set (r, tmp);
+}
+
 /* expand i-th row of R from cseed and i */
 static inline void
 _expand_R_i2 (int8_t *Ri, unsigned int ncols, unsigned int i,
@@ -1275,11 +1296,15 @@ void test_lrot (const int_t mudulus) {
     INTVEC_T(my_vector_rotated, 5, 1);
     intvec_ptr my_vector_rotated_ptr = &my_vector_rotated;
 
+
+    intvec_reverse(my_vector, my_vector);
+
     // Rot(my_vector) * my_vector2
     INTVEC_T(rot_s_vec, 5, 1);
     INT_T (new, 1);
     for (int i=0; i<my_vector_rotated_ptr->nelems; i++) {
-        intvec_lrot_pos(my_vector_rotated_ptr, my_vector, i);
+        intvec_lrot_pos(my_vector_rotated_ptr, my_vector, i+1);
+        //intvec_dump(my_vector_rotated);
         intvec_dot(new, my_vector_rotated_ptr, my_vector2);
 
         // do we need to do mod and redc?
