@@ -362,6 +362,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
         polyvec_fromcrt (tmp);
         poly_adddot (r0[i], s, tmp, 0);
         poly_neg_self (r0[i]);
+        poly_fromcrt (r0[i]);
     }
 
     for (i = 0; i < M; i++)
@@ -374,6 +375,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
         polyvec_fromcrt (tmp);
         poly_adddot (rprime0[i], s, tmp, 0);
         poly_neg_self (rprime0[i]);
+        poly_fromcrt (rprime0[i]);
 
         /* only constant coeff needs to be zero */
         poly_brandom (r0err, 1, seed, dom++);
@@ -847,9 +849,9 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
             R_us_coeff = intvec_get_elem (ys_coeffs, i);
 
             // should I use this or _expand_Rprime_i?
-            printf("Expanding...\n");
+            //printf("Expanding...\n");
             _expand_R_i2 (Ri_s, u_s->nelems, i, cseed);
-            printf("Expanded\n");
+            //printf("Expanded\n");
 
             for (j = 0; j < u_s->nelems; j++)
             {
