@@ -654,11 +654,11 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     const unsigned int kmsis = abdlop->kmsis;
     const unsigned int m2 = abdlop->m2;
     // todo: why not instantiating s3coeffs?
-    INTVEC_T (ys_coeffs, 256, int_get_nlimbs (Rq->q));
-    INTVEC_T (yl_coeffs, 256, int_get_nlimbs (Rq->q));
+    //INTVEC_T (ys_coeffs, 256, int_get_nlimbs (Rq->q));
+    //INTVEC_T (yl_coeffs, 256, int_get_nlimbs (Rq->q));
     INTVEC_T (yv_coeffs, 256, int_get_nlimbs (Rq->q));
-    INTVEC_T (zs_coeffs, 256, int_get_nlimbs (Rq->q));
-    INTVEC_T (zl_coeffs, 256, int_get_nlimbs (Rq->q));
+    //INTVEC_T (zs_coeffs, 256, int_get_nlimbs (Rq->q));
+    //INTVEC_T (zl_coeffs, 256, int_get_nlimbs (Rq->q));
     INTVEC_T (zv_coeffs, 256, int_get_nlimbs (Rq->q));
     polyvec_t tmp_polyvec, s1_, m_, s21, // s1_, m_ are probably not needed
               ys_, yl_, yv_, tys, tyl, tyv, 
@@ -682,14 +682,14 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     // what is this for??
     memset (out, 0, CEIL (256 * 2 * log2q + d * log2q, 8) + 1); // XXX
     
-    polyvec_alloc (ys, Rq, 256 / d);
-    polyvec_alloc (yl, Rq, 256 / d);
+    //polyvec_alloc (ys, Rq, 256 / d);
+    //polyvec_alloc (yl, Rq, 256 / d);
     polyvec_alloc (yv, Rq, 256 / d);
-    polyvec_alloc (zs, Rq, 256 / d);
-    polyvec_alloc (zl, Rq, 256 / d);
+    //polyvec_alloc (zs, Rq, 256 / d);
+    //polyvec_alloc (zl, Rq, 256 / d);
     polyvec_alloc (zv, Rq, 256 / d);
-    polyvec_alloc (zs_, Rq, 256 / d);
-    polyvec_alloc (zl_, Rq, 256 / d);
+    //polyvec_alloc (zs_, Rq, 256 / d);
+    //polyvec_alloc (zl_, Rq, 256 / d);
     polyvec_alloc (zv_, Rq, 256 / d);
 
     printf("allocated space for building z's\n");
@@ -706,21 +706,21 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
 
     /* tB = tB_,ty,tbeta */
     loff = 0;
-    //polyvec_get_subvec (upsilon, s1, m1, Z, 1);
-    polyvec_get_subvec (ys_, m, short_l + loff, 256 / d, 1);
-    polyvec_get_subvec (tys, tB, short_l + loff, 256 / d, 1);
-    // why does this submat have m2-kmsis cols? and not m2?
-    polymat_get_submat (Bys, Bprime, short_l + loff, 0, 256 / d, m2 - kmsis, 1, 1);
-    polyvec_set_coeffvec2 (ys, ys_coeffs);
-    polyvec_set_coeffvec2 (zs_, zs_coeffs);
-    loff += 256 / d;
+    // //polyvec_get_subvec (upsilon, s1, m1, Z, 1);
+    // polyvec_get_subvec (ys_, m, short_l + loff, 256 / d, 1);
+    // polyvec_get_subvec (tys, tB, short_l + loff, 256 / d, 1);
+    // // why does this submat have m2-kmsis cols? and not m2?
+    // polymat_get_submat (Bys, Bprime, short_l + loff, 0, 256 / d, m2 - kmsis, 1, 1);
+    // polyvec_set_coeffvec2 (ys, ys_coeffs);
+    // polyvec_set_coeffvec2 (zs_, zs_coeffs);
+    // loff += 256 / d;
 
-    polyvec_get_subvec (yl_, m, short_l + loff, 256 / d, 1);
-    polyvec_get_subvec (tyl, tB, short_l + loff, 256 / d, 1);
-    polymat_get_submat (Byl, Bprime, short_l + loff, 0, 256 / d, m2 - kmsis, 1, 1);
-    polyvec_set_coeffvec2 (yl, yl_coeffs);
-    polyvec_set_coeffvec2 (zl_, zl_coeffs);
-    loff += 256 / d;
+    // polyvec_get_subvec (yl_, m, short_l + loff, 256 / d, 1);
+    // polyvec_get_subvec (tyl, tB, short_l + loff, 256 / d, 1);
+    // polymat_get_submat (Byl, Bprime, short_l + loff, 0, 256 / d, m2 - kmsis, 1, 1);
+    // polyvec_set_coeffvec2 (yl, yl_coeffs);
+    // polyvec_set_coeffvec2 (zl_, zl_coeffs);
+    // loff += 256 / d;
 
     polyvec_get_subvec (yv_, m, short_l + loff, 256 / d, 1);
     polyvec_get_subvec (tyv, tB, short_l + loff, 256 / d, 1);
@@ -756,34 +756,6 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
         }
         printf("sampled signs\n");
 
-        /* ys, append to m  */
-        polyvec_grandom (ys, log2stdev4, seed, dom++); // stdev4 or 3?? -> need to define later with our own parameters
-        polyvec_set (ys_, ys);
-        /* tys */
-        polyvec_set (tys, ys);
-        polyvec_addmul (tys, Bys, s21, 0);
-        polyvec_mod (tys, tys);
-        polyvec_redp (tys, tys);
-        /* beta_s  */
-        beta_s = (rbits & (1 << (8 - nrbits))) >> (8 - nrbits);
-        beta_s = 1 - 2 * beta_s; /* {0,1} -> {1,-1} */
-        // printf ("beta3 %d\n", beta3);
-        nrbits -= 1;
-        
-        /* yl, append to m  */
-        polyvec_grandom (yl, log2stdev4, seed, dom++); // stdev4 or 3??
-        polyvec_set (yl_, yl);
-        /* tyl */
-        polyvec_set (tyl, yl);
-        polyvec_addmul (tyl, Byl, s21, 0);
-        polyvec_mod (tyl, tyl);
-        polyvec_redp (tyl, tyl);
-        /* beta_l  */
-        beta_l = (rbits & (1 << (8 - nrbits + 1))) >> (8 - nrbits + 1);
-        beta_l = 1 - 2 * beta_l; /* {0,1} -> {1,-1} */
-        // printf ("beta4 %d\n", beta4);
-        nrbits -= 1;
-
         /* yv, append to m  */
         polyvec_grandom (yv, log2stdev4, seed, dom++); // stdev4 or 3??
         polyvec_set (yv_, yv);
@@ -807,8 +779,8 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
         // for now I commit only to beta_l and beta_v --> not a problem in new version of the proof
         poly = polyvec_get_elem (beta, 0);
         coeffs = poly_get_coeffvec (poly);
-        intvec_set_elem_i64 (coeffs, 0, beta_l);
-        intvec_set_elem_i64 (coeffs, d / 2, beta_v);
+        intvec_set_elem_i64 (coeffs, 0, beta_v);
+        //intvec_set_elem_i64 (coeffs, d / 2, beta_v);
         polyvec_set (tbeta, beta);
         polyvec_addmul (tbeta, Bbeta, s21, 0);
         polyvec_mod (tbeta, tbeta);
@@ -816,8 +788,8 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
 
         /* encode ty, tbeta, hash of encoding is seed for challenges */
         coder_enc_begin (cstate, out);
-        coder_enc_urandom3 (cstate, tys, Rq->q, log2q);
-        coder_enc_urandom3 (cstate, tyl, Rq->q, log2q);
+        //coder_enc_urandom3 (cstate, tys, Rq->q, log2q);
+        //coder_enc_urandom3 (cstate, tyl, Rq->q, log2q);
         coder_enc_urandom3 (cstate, tyv, Rq->q, log2q);
         coder_enc_urandom3 (cstate, tbeta, Rq->q, log2q);
         coder_enc_end (cstate);
@@ -833,88 +805,6 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
         shake128_squeeze (hstate, cseed, 32);
 
         printf("created tbeta\n");
-
-
-        // calculate zs
-        INT_T (beta_s_Rij_us_j, int_get_nlimbs (Rq->q));
-        int8_t Ri_s[u_s->nelems];
-        int_ptr us_coeff, R_us_coeff;
-
-        //polyvec_fromcrt (s3);
-        polyvec_fromcrt (ys);
-
-        polyvec_set (zs_, ys);
-        intvec_set_zero (ys_coeffs);
-
-        for (i = 0; i < 256; i++)
-        {
-            R_us_coeff = intvec_get_elem (ys_coeffs, i);
-
-            // should I use this or _expand_Rprime_i? -> should be the same
-            //printf("Expanding...\n");
-            _expand_R_i2 (Ri_s, u_s->nelems, i, cseed);
-            //printf("Expanded\n");
-
-            for (j = 0; j < u_s->nelems; j++)
-            {
-                if (Ri_s[j] == 0)
-                {
-                }
-                else
-                {
-                    ASSERT_ERR (Ri_s[j] == 1 || Ri_s[j] == -1);
-
-                    us_coeff = intvec_get_elem (u_s_vec, j);
-                    
-                    int_set (beta_s_Rij_us_j, us_coeff);
-                    int_mul_sgn_self (beta_s_Rij_us_j, Ri_s[j]);
-                    int_add (R_us_coeff, R_us_coeff, beta_s_Rij_us_j);
-                }
-            }
-        }
-        intvec_mul_sgn_self (ys_coeffs, beta_s);
-        intvec_add (zs_coeffs, zs_coeffs, ys_coeffs);
-        printf("created z_s\n");
-
-        
-        // calculate zl
-        INT_T (beta_l_Rij_ul_j, int_get_nlimbs (Rq->q));
-        int8_t Ri_l[u_l->nelems];
-        int_ptr ul_coeff, R_ul_coeff;
-
-        //polyvec_fromcrt (s3);
-        polyvec_fromcrt (yl);
-
-        polyvec_set (zl_, yl);
-        intvec_set_zero (yl_coeffs);
-
-        for (i = 0; i < 256; i++)
-        {
-            R_ul_coeff = intvec_get_elem (yl_coeffs, i);
-
-            // should I use this or _expand_Rprime_i?
-            //_expand_R_i (Ri_l, u_l->nelems, i, cseed);
-
-            for (j = 0; j < u_l->nelems; j++)
-            {
-                if (Ri_l[j] == 0)
-                {
-                }
-                else
-                {
-                    ASSERT_ERR (Ri_l[j] == 1 || Ri_l[j] == -1);
-
-                    ul_coeff = intvec_get_elem (u_l_vec, j);
-                    
-                    int_set (beta_l_Rij_ul_j, ul_coeff);
-                    int_mul_sgn_self (beta_l_Rij_ul_j, Ri_l[j]);
-                    int_add (R_ul_coeff, R_ul_coeff, beta_l_Rij_ul_j);
-                }
-            }
-        }
-        intvec_mul_sgn_self (yl_coeffs, beta_l);
-        intvec_add (zl_coeffs, zl_coeffs, yl_coeffs);
-        printf("created z_l\n");
 
         // calculate zv
         INT_T (beta_v_Rij_uv_j, int_get_nlimbs (Rq->q));
@@ -957,21 +847,6 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
 
 
         /* rejection sampling */
-        intvec_mul_sgn_self (ys_coeffs, beta_s); /* revert mul by beta3 */
-        rej = rej_bimodal (rstate_rej, zs_coeffs, ys_coeffs, scM4, stdev4sqr);
-        if (rej) {
-            DEBUG_PRINTF (DEBUG_PRINT_REJ, "%s", "reject u_s");
-            continue;
-        }
-        printf("did rejection sampling for z_s\n");
-
-        intvec_mul_sgn_self (yl_coeffs, beta_l); /* revert mul by beta3 */
-        rej = rej_bimodal (rstate_rej, zl_coeffs, yl_coeffs, scM4, stdev4sqr);
-        if (rej) {
-            DEBUG_PRINTF (DEBUG_PRINT_REJ, "%s", "reject u_l");
-            continue;
-        }
-        printf("did rejection sampling for z_l\n");
 
         intvec_mul_sgn_self (yv_coeffs, beta_v); /* revert mul by beta3 */
         rej = rej_bimodal (rstate_rej, zv_coeffs, yv_coeffs, scM4, stdev4sqr);
