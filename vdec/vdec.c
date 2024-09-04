@@ -764,7 +764,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
         polyvec_addmul (tyv, Byv, s21, 0);
         polyvec_mod (tyv, tyv);
         polyvec_redp (tyv, tyv);
-        /* beta_l  */
+        /* beta_v  */
         beta_v = (rbits & (1 << (8 - nrbits + 1))) >> (8 - nrbits + 1);
         beta_v = 1 - 2 * beta_v; /* {0,1} -> {1,-1} */
         // printf ("beta4 %d\n", beta4);
@@ -822,7 +822,10 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
             R_uv_coeff = intvec_get_elem (yv_coeffs, i);
 
             // should I use this or _expand_Rprime_i?
-            //_expand_R_i2 (Ri_v, u_v->nelems, i, cseed);
+
+            //printf("Expanding...\n");
+            _expand_R_i2 (Ri_v, u_v->nelems, i, cseed);
+            //printf("Expanded\n");
 
             for (j = 0; j < u_v->nelems; j++)
             {
