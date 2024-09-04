@@ -7,8 +7,8 @@
 #include "vdec_ct.h"
 #include <mpfr.h>
 
-#define N 3 /* number of quadratic equations */
-#define M 3 /* number of quadratic eval equations */
+#define N 1 /* number of quadratic equations */
+#define M 1 /* number of quadratic eval equations */
 
 static void vdec_lnp_tbox (uint8_t seed[32], const lnp_quad_eval_params_t params, 
                            polyvec_t sk, polyvec_t ct0, polyvec_t ct1, 
@@ -443,7 +443,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     const unsigned int d = polyring_get_deg (Rq);
     const unsigned int m1 = abdlop->m1;
     const unsigned int l = abdlop->l;
-    const unsigned int nbounds = 3; // number of u vectors we want to proof are small
+    const unsigned int nbounds = 3; // TODO: number of u vectors we want to proof are small - will change to 1
 
     printf("ajtai size: %d, bdlop size: %d, lext:%d, lambda:%d\n", m1, l, abdlop->lext, lambda);
 
@@ -452,6 +452,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     polyvec_get_subvec(tobe_sk, s1, 0, sk->nelems, 1);
     polyvec_set(tobe_sk, sk);
 
+    // TODO: to be removed according to latest version of the protocol
     polyvec_get_subvec(tobe_m, m, 0, vinh->nelems,1);
     polyvec_set(tobe_m, vinh);
     // polyvec_get_subvec(s1_, s1, 0, m1, 1);
@@ -466,6 +467,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     // #endregion
 
     // #region build u vectors
+    // TODO: only 1 u will be kept
 
     // build u vectors - u_s = [sk], u_l = [l_i], u_v = [vinh]
     INTVEC_T(u_s_vec, d * sk->nelems, Rq->q->nlimbs);
@@ -588,8 +590,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
 
     // adding other parts of u_l
     intvec_add(u_l, rot_s, sum_tmp); 
-    // Todo (Emad): u_l was never used before here, and it's not instatiated with zero
-    // Todo (Emad): did you mean =>  intvec_add(u_l, rot_s, sum_tmp);
+
     
     // dividing by q
     INT_T (inv_fhe_q, Rq->q->nlimbs);
@@ -694,7 +695,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     printf("allocated space for building z's\n");
 
     /* s1 = s1_,upsilon, m = m_,y3_,y4_,beta */
-    // from lnp-tbox: s1_ m_ probably not needed. why only 1 beta?
+    // from lnp-tbox: s1_ m_ probably not needed
     //polyvec_get_subvec (s1_, s1, 0, m1, 1);
     //polyvec_get_subvec (m_, m, 0, l, 1);
     //printf("m length %d, l=%d, beta pos %d\n", m->nelems, l, short_l + (256 / d) * nbounds);
@@ -728,7 +729,6 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     polyvec_set_coeffvec2 (zv_, zv_coeffs);
     loff += 256 / d;
 
-    // again: why tbeta has only 1 element?
     polyvec_get_subvec (tbeta, tB, short_l + loff, 1, 1);
     polymat_get_submat (Bbeta, Bprime, short_l + loff, 0, 1, m2 - kmsis, 1, 1);
     printf("tbeta in pos: %d out of %d\n", short_l+loff, tB->nelems);
@@ -757,7 +757,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
         printf("sampled signs\n");
 
         /* ys, append to m  */
-        polyvec_grandom (ys, log2stdev4, seed, dom++); // stdev4 or 3??
+        polyvec_grandom (ys, log2stdev4, seed, dom++); // stdev4 or 3?? -> need to define later with our own parameters
         polyvec_set (ys_, ys);
         /* tys */
         polyvec_set (tys, ys);
@@ -804,7 +804,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
         /* tbeta */ 
         // THIS IS TROUBLESOME, they have 2 betas only
         // so they commit to it with 1 element
-        // for now I commit only to beta_l and beta_v
+        // for now I commit only to beta_l and beta_v --> not a problem in new version of the proof
         poly = polyvec_get_elem (beta, 0);
         coeffs = poly_get_coeffvec (poly);
         intvec_set_elem_i64 (coeffs, 0, beta_l);
@@ -850,7 +850,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
         {
             R_us_coeff = intvec_get_elem (ys_coeffs, i);
 
-            // should I use this or _expand_Rprime_i?
+            // should I use this or _expand_Rprime_i? -> should be the same
             //printf("Expanding...\n");
             _expand_R_i2 (Ri_s, u_s->nelems, i, cseed);
             //printf("Expanded\n");
