@@ -423,12 +423,12 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     // #region Committing to witness
 
     // all these parameters need to be set correctly
-    const unsigned int gamma = 12;
+    const unsigned int gamma = 100000;
     const unsigned int B_v = 12;
     const unsigned int B_l = 12;
-    const unsigned int PSI = 12;
-    const unsigned int stdev_s = gamma * sqrt(337) * sqrt(fhe_degree);
-    const unsigned int stdev_l = gamma * sqrt(337) * sqrt(fhe_degree * (vinh->nelems / 32));
+    const unsigned int PSI = 3;
+    //const unsigned int stdev_s = gamma * sqrt(337) * sqrt(fhe_degree);
+    //const unsigned int stdev_l = gamma * sqrt(337) * sqrt(fhe_degree * (vinh->nelems / 32));
     const unsigned int stdev_v = gamma * sqrt(337) * sqrt(fhe_degree);
     const unsigned int log2stdev4 = 1.55; // TODO: set this correctly /* stdev4 = 1.55 * 2^log2stdev2 */
 
@@ -446,6 +446,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     const unsigned int nbounds = 3; // TODO: number of u vectors we want to proof are small - will change to 1
 
     printf("ajtai size: %d, bdlop size: %d, lext:%d, lambda:%d\n", m1, l, abdlop->lext, lambda);
+    printf("quad-many l: %d, quad-many lext:%d\n", params->quad_many->l, params->quad_many->lext);
 
     // build witness and commit
     polyvec_t tobe_sk, tobe_m; // vectors to be committed using abdlop
@@ -736,7 +737,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     printf("extracted subvecs for y's and beta's commitments\n");
 
 
-    // what is this for?
+    // what is this for? -> rejection sampling state
     nrbits = 0;
     rng_init (rstate_rej, seed, dom++); // seed was seed_tbox in compute_z34
     rng_init (rstate_signs, seed, dom++);
@@ -824,7 +825,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
             // should I use this or _expand_Rprime_i?
 
             //printf("Expanding...\n");
-            _expand_R_i2 (Ri_v, u_v->nelems, i, cseed);
+            //_expand_R_i2 (Ri_v, u_v->nelems, i, cseed);
             //printf("Expanded\n");
 
             for (j = 0; j < u_v->nelems; j++)
@@ -884,11 +885,11 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     rng_clear (rstate_rej);
     //polyvec_free (s3);
     //polyvec_free (s4);
-    polyvec_free (ys);
-    polyvec_free (yl);
+    //polyvec_free (ys);
+    //polyvec_free (yl);
     polyvec_free (yv);
-    polyvec_free (zs_);
-    polyvec_free (zl_);
+    //polyvec_free (zs_);
+    //polyvec_free (zl_);
     polyvec_free (zv_);
     printf("finished cleaning up after z's\n");
 
