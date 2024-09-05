@@ -443,7 +443,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     const unsigned int d = polyring_get_deg (Rq);
     const unsigned int m1 = abdlop->m1;
     const unsigned int l = abdlop->l;
-    const unsigned int nbounds = 3; // TODO: number of u vectors we want to proof are small - will change to 1
+    const unsigned int nbounds = 1; // TODO: number of u vectors we want to proof are small - will change to 1
 
     printf("ajtai size: %d, bdlop size: %d, lext:%d, lambda:%d\n", m1, l, abdlop->lext, lambda);
     printf("quad-many l: %d, quad-many lext:%d\n", params->quad_many->l, params->quad_many->lext);
@@ -636,6 +636,9 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     const uint8_t *seed_rej34 = expseed;
     const uint8_t *seed_cont = expseed + 32;
     const uint8_t *seed_cont2 = expseed + 64;
+    /* buff for encoding of tg */
+    const unsigned int log2q = polyring_get_log2q (Rq);
+    uint8_t out[CEIL(log2q * d * lambda / 2, 8) + 1];
 
     // this is done before calling compute_z34
     /*
@@ -651,7 +654,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
 
     
     // things from compute_z34
-    const unsigned int log2q = polyring_get_log2q (Rq);  
+    //const unsigned int log2q = polyring_get_log2q (Rq);  
     const unsigned int kmsis = abdlop->kmsis;
     const unsigned int m2 = abdlop->m2;
     // todo: why not instantiating s3coeffs?
@@ -667,21 +670,21 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
               zs, zl, zv, zs_, zl_, zv_;
     // intvec_ptr coeffs; // already declared
     polymat_t Bys, Byl, Byv, Bbeta;
-    //shake128_state_t hstate;
-    //coder_state_t cstate;
+    shake128_state_t hstate_z34;
+    coder_state_t cstate_z34;
     rng_state_t rstate_signs;
     rng_state_t rstate_rej;
     //uint32_t dom = 0; // already declared
     uint8_t rbits;
     unsigned int nrbits, outlen, loff, off;
-    uint8_t out[CEIL (256 * 2 * log2q + d * log2q, 8) + 1];
+    uint8_t out_z34[CEIL (256 * 2 * log2q + d * log2q, 8) + 1];
     uint8_t cseed[32]; /* seed for challenge */
     //poly_ptr poly; // already declared
     int beta_s = 0, beta_l = 0, beta_v;
     int rej;
 
     // what is this for??
-    memset (out, 0, CEIL (256 * 2 * log2q + d * log2q, 8) + 1); // XXX
+    memset (out_z34, 0, CEIL (256 * 2 * log2q + d * log2q, 8) + 1); // XXX
     
     //polyvec_alloc (ys, Rq, 256 / d);
     //polyvec_alloc (yl, Rq, 256 / d);
@@ -788,22 +791,22 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
         polyvec_redp (tbeta, tbeta);
 
         /* encode ty, tbeta, hash of encoding is seed for challenges */
-        coder_enc_begin (cstate, out);
+        coder_enc_begin (cstate_z34, out_z34);
         //coder_enc_urandom3 (cstate, tys, Rq->q, log2q);
         //coder_enc_urandom3 (cstate, tyl, Rq->q, log2q);
-        coder_enc_urandom3 (cstate, tyv, Rq->q, log2q);
-        coder_enc_urandom3 (cstate, tbeta, Rq->q, log2q);
-        coder_enc_end (cstate);
+        coder_enc_urandom3 (cstate_z34, tyv, Rq->q, log2q);
+        coder_enc_urandom3 (cstate_z34, tbeta, Rq->q, log2q);
+        coder_enc_end (cstate_z34);
 
-        outlen = coder_get_offset (cstate);
+        outlen = coder_get_offset (cstate_z34);
         ASSERT_ERR (outlen % 8 == 0);
         ASSERT_ERR (outlen / 8 <= CEIL (256 * 2 * log2q + d * log2q, 8) + 1);
         outlen >>= 3; /* nbits to nbytes */
 
-        shake128_init (hstate);
-        shake128_absorb (hstate, hashp, 32);
-        shake128_absorb (hstate, out, outlen);
-        shake128_squeeze (hstate, cseed, 32);
+        shake128_init (hstate_z34);
+        shake128_absorb (hstate_z34, hashp, 32);
+        shake128_absorb (hstate_z34, out_z34, outlen);
+        shake128_squeeze (hstate_z34, cseed, 32);
 
         printf("created tbeta\n");
 
@@ -901,34 +904,46 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     //const uint8_t *seed_cont = expseed + 32;
     polyvec_t subv2, subv_auto, tg, s2_;
     polymat_t Bextprime;
-    polymat_get_submat (Bextprime, Bprime, l, 0, lambda / 2, abdlop->m2 - abdlop->kmsis, 1, 1); // is l the correct row
 
-
-    // mostly just copied stuff from lnp-tbox --> needs to be changed
     polyvec_free (s); // freeing this because this is used in the original proof from quad_eval_test. Later we can remove this
     polyvec_alloc (s, Rq, 2 * (m1 + l));
 
-    /* BUILDING: s = (<s1>,<m>,<y_s>,<y_l>,<y_v>,<beta_s>,<beta_l>,<beta_v>) */
+
+
+    // stuff from lnp-tbox (with adaptation)
+    memcpy (hash0, hashp, 32); // save this level of FS hash for later
+
+    /* tB = (tB_,tg,t) */
+    polyvec_get_subvec (tg, tB, l, lambda / 2, 1); // is l the correct row -> it should be
+    /* Bprime = (Bprime_,Bext,bext) */
+    polymat_get_submat (Bextprime, Bprime, l, 0, lambda / 2, abdlop->m2 - abdlop->kmsis, 1, 1);
+
+
+    /* BUILDING: s = (<s1>,<m>,<y_v>,<beta_v>) */ // should this block be here? calculating automorphisms
+    // automorphism of ajtai part (s1)
     polyvec_get_subvec (subv, s, 0, m1, 2);
     polyvec_get_subvec (subv_auto, s, 1, m1, 2);
     polyvec_set (subv, s1);
     polyvec_auto (subv_auto, s1);
 
-    if (l > 0)
+    // automorphism of original bdlop part (m)
+    if (short_l > 0)
     {
-        polyvec_get_subvec (subv, s, (m1) * 2, l, 2);
-        polyvec_get_subvec (subv_auto, s, (m1) * 2 + 1, l, 2);
-        polyvec_get_subvec (subv2, m, 0, l, 1);
+        polyvec_get_subvec (subv, s, (m1) * 2, short_l, 2);
+        polyvec_get_subvec (subv_auto, s, (m1) * 2 + 1, short_l, 2);
+        polyvec_get_subvec (subv2, m, 0, short_l, 1);
         polyvec_set (subv, subv2);
         polyvec_auto (subv_auto, subv2);
     }
 
-    // polyvec_get_subvec (subv, s, (m1 + l) * 2, loff + 1, 2);
-    // polyvec_get_subvec (subv_auto, s, (m1 + l) * 2 + 1, loff + 1, 2);
-    // polyvec_get_subvec (subv2, m, l, loff + 1, 1);
+    // automorphism of extended bdlop part (y_v, beta_v)
+    polyvec_get_subvec (subv, s, (m1 + short_l) * 2, loff + 1, 2);
+    polyvec_get_subvec (subv_auto, s, (m1 + short_l) * 2 + 1, loff + 1, 2);
+    polyvec_get_subvec (subv2, m, short_l, loff + 1, 1);
 
-    // polyvec_set (subv, subv2);
-    // polyvec_auto (subv_auto, subv2);
+    polyvec_set (subv, subv2);
+    polyvec_auto (subv_auto, subv2);
+    // end of block for calculating automorphisms
 
 
     /* generate uniformly random h=g with coeffs 0 and d/2 == 0 */
@@ -944,15 +959,30 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
 
 
     /* append g to message m */
-    // polyvec_get_subvec (subv, m, l, lambda / 2, 1);
-    // polyvec_set (subv, h);
+    polyvec_get_subvec (subv, m, l, lambda / 2, 1);
+    polyvec_set (subv, h);
 
     /* tg = Bexptprime*s2 + g */
-    // polyvec_set (tg, h);
-    // polyvec_get_subvec (s2_, s2, 0, abdlop->m2 - abdlop->kmsis, 1);
-    // polyvec_addmul (tg, Bextprime, s2_, 0);
+    polyvec_set (tg, h);
+    polyvec_get_subvec (s2_, s2, 0, abdlop->m2 - abdlop->kmsis, 1);
+    polyvec_addmul (tg, Bextprime, s2_, 0);
 
+    /* encode and hash tg */
+    polyvec_mod (tg, tg);
+    polyvec_redp (tg, tg);
 
+    coder_enc_begin (cstate, out);
+    coder_enc_urandom3 (cstate, tg, Rq->q, log2q);
+    coder_enc_end (cstate);
+
+    outlen = coder_get_offset (cstate);
+    outlen >>= 3; /* nbits to nbytes */
+
+    shake128_init (hstate);
+    shake128_absorb (hstate, hashp, 32);
+    shake128_absorb (hstate, out, outlen);
+    shake128_squeeze (hstate, hashp, 32);
+    shake128_clear (hstate);
 
     /************************************************************************/
     /*                                                                      */
