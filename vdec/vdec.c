@@ -11,6 +11,7 @@
 #define N 1 /* number of quadratic equations */
 #define M 1 /* number of quadratic eval equations */
 
+/* Number of elements in an n x n (upper) diagonal matrix. */
 #define NELEMS_DIAG(n) (((n) * (n) - (n)) / 2 + (n))
 
 static void vdec_lnp_tbox (uint8_t seed[32], const lnp_quad_eval_params_t params, 
@@ -20,6 +21,69 @@ static void vdec_lnp_tbox (uint8_t seed[32], const lnp_quad_eval_params_t params
 
 static inline void _expand_R_i2 (int8_t *Ri, unsigned int ncols, unsigned int i,
                                 const uint8_t cseed[32]);
+
+static void __shuffleauto2x2submatssparse (spolymat_t a);
+static void __shuffleautovecsparse (spolyvec_t r);
+static void __schwartz_zippel_accumulate (
+    spolymat_ptr R2i, spolyvec_ptr r1i, poly_ptr r0i, spolymat_ptr Rprime2i[],
+    spolyvec_ptr rprime1i[], poly_ptr rprime0i[], unsigned int M_alt,
+    const intvec_t v, const lnp_quad_eval_params_t params);
+static void __schwartz_zippel_auto (spolymat_ptr R2i, spolyvec_ptr r1i,
+                                    poly_ptr r0i, spolymat_ptr R2i2,
+                                    spolyvec_ptr r1i2, poly_ptr r0i2,
+                                    const lnp_quad_eval_params_t params);
+static void __schwartz_zippel_accumulate2 (
+    spolymat_ptr R2i[], spolyvec_ptr r1i[], poly_ptr r0i[],
+    spolymat_ptr R2i2[], spolyvec_ptr r1i2[], poly_ptr r0i2[],
+    spolymat_ptr R2primei[], spolyvec_ptr r1primei[], poly_ptr r0primei[],
+    unsigned int M_alt, const uint8_t seed[32], uint32_t dom,
+    const lnp_quad_eval_params_t params);
+static void __schwartz_zippel_accumulate_beta4 (
+    spolymat_ptr R2i[], spolyvec_ptr r1i[], poly_ptr r0i[],
+    spolymat_ptr R2i2[], spolyvec_ptr r1i2[], poly_ptr r0i2[],
+    spolymat_ptr R2t, spolyvec_ptr r1t, poly_ptr r0t, const uint8_t seed[32],
+    uint32_t dom, const lnp_tbox_params_t params);
+static void __schwartz_zippel_accumulate_z4 (
+    spolymat_ptr R2i[], spolyvec_ptr r1i[], poly_ptr r0i[],
+    spolymat_ptr R2i2[], spolyvec_ptr r1i2[], poly_ptr r0i2[],
+    spolymat_ptr R2t, spolyvec_ptr r1t, poly_ptr r0t, polymat_t Ds,
+    polymat_t Dm, polyvec_t u, polymat_t oDs, polymat_t oDm, polyvec_t z4,
+    const uint8_t seed[32], uint32_t dom, const lnp_tbox_params_t params);
+
+static inline void
+__evaleq (poly_ptr res, spolymat_ptr Rprime2, spolyvec_ptr rprime1,
+          poly_ptr rprime0, polyvec_ptr s)
+{
+  polyring_srcptr Rq = rprime0->ring;
+  polyvec_t tmp;
+
+  ASSERT_ERR (res != rprime0);
+
+  polyvec_alloc (tmp, Rq, spolymat_get_nrows (Rprime2));
+
+  if (rprime0 != NULL)
+    poly_set (res, rprime0);
+  else
+    poly_set_zero (res);
+
+  if (rprime1 != NULL)
+    poly_adddot2 (res, rprime1, s, 0);
+
+  if (Rprime2 != NULL)
+    {
+      polyvec_mulsparse (tmp, Rprime2, s);
+      polyvec_fromcrt (tmp);
+      poly_adddot (res, s, tmp, 0);
+    }
+  poly_fromcrt (res);
+  poly_mod (res, res);
+  poly_redc (res, res);
+
+  polyvec_free (tmp);
+}
+
+
+
 
 int main(void)
 {
@@ -908,6 +972,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     polyvec_t subv2, subv_auto, tg, s2_;
     polymat_t Bextprime;
 
+    printf("start building statements for next parts of the proof\n");
     polyvec_free (s); // freeing this because this is used in the original proof from quad_eval_test. Later we can remove this
     polyvec_alloc (s, Rq, 2 * (m1 + params->quad_many->l)); // double check this l (from quad-many and not quad)
 
@@ -921,6 +986,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     polymat_get_submat (Bextprime, Bprime, l, 0, lambda / 2, abdlop->m2 - abdlop->kmsis, 1, 1);
 
 
+    printf("building s - calculating automorphisms\n");
     /* BUILDING: s = (<s1>,<m>,<y_v>,<beta_v>) */ // should this block be here? calculating automorphisms
     // automorphism of ajtai part (s1)
     polyvec_get_subvec (subv, s, 0, m1, 2);
@@ -948,6 +1014,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     // end of block for calculating automorphisms
 
 
+    printf("generate random h with coeffs 0 and d/s == 0\n");
     /* generate uniformly random h=g with coeffs 0 and d/2 == 0 */
     for (i = 0; i < lambda / 2; i++)
     {
@@ -960,6 +1027,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     }
 
 
+    printf("append g to bdlop part and commit\n");
     /* append g to message m */
     polyvec_get_subvec (subv, m, l, lambda / 2, 1);
     polyvec_set (subv, h);
@@ -988,19 +1056,22 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
 
 
 
+    printf("going into quad and quad_eval eqs setup\n");
     // instantiating QUAD + QUAD_EVAL eqs
     spolymat_t R2t;
     spolyvec_t r1t;
     poly_t r0t;
     const unsigned int n_ = 2 * (m1 + l);
     const unsigned int np2 = 2 * (m1 + params->quad_many->l);
-    spolymat_ptr R2prime_sz[lambda / 2 + 2 + N], R2primei;
-    spolyvec_ptr r1prime_sz[lambda / 2 + 2 + N], r1primei;
-    poly_ptr r0prime_sz[lambda / 2 + 2 + N], r0primei;
+    spolymat_ptr R2prime_sz[lambda / 2 + 1], R2primei; // double check: the +1 should be for beta
+    spolyvec_ptr r1prime_sz[lambda / 2 + 1], r1primei; 
+    poly_ptr r0prime_sz[lambda / 2 + 1], r0primei; 
     spolymat_ptr R2prime_sz2[lambda / 2];
     spolyvec_ptr r1prime_sz2[lambda / 2];
     poly_ptr r0prime_sz2[lambda / 2];
+    const unsigned int ibeta = (m1 + short_l + loff) * 2;
 
+    printf("allocate space for 1 quad eq - R2t, r1t, r0t\n");
     /* allocate tmp space for 1 quadrativ eq */
     spolymat_alloc (R2t, Rq, n_, n_, NELEMS_DIAG (n_));
     spolymat_set_empty (R2t);
@@ -1011,9 +1082,11 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     poly_alloc (r0t, Rq);
     poly_set_zero (r0t);
 
+    printf("Allocate lambda/2 eqs for sz accumulators\n");
     /* allocate lambda/2 eqs (schwarz-zippel accumulators) */
     for (i = 0; i < lambda / 2; i++) {
       R2primei = _alloc_wrapper (sizeof (spolymat_t));
+      printf("Allocating\n");
       spolymat_alloc (R2primei, Rq, np2, np2, NELEMS_DIAG (np2));
       R2prime_sz[i] = R2primei;
       spolymat_set_empty (R2prime_sz[i]);
@@ -1034,6 +1107,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
       r0prime_sz[i] = r0primei;
       poly_set_zero (r0prime_sz[i]);
     }
+    printf("Allocate lambda/2 eqs for sz accumulators - part2\n");
     for (i = 0; i < lambda / 2; i++) {
       R2primei = _alloc_wrapper (sizeof (spolymat_t));
       spolymat_alloc (R2primei, Rq, np2, np2, NELEMS_DIAG (np2));
@@ -1057,17 +1131,99 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
       poly_set_zero (r0prime_sz2[i]);
     }
 
+    /* set up quad eqs for lower level protocol */
+    // allocate 2 eqs in beta,o(beta): (actually 1 in our case - only beta4)
+    // prove beta3^2-1=0 over Rq -> (i2*beta+i2*o(beta))^2 - 1 = i4*beta^2 +
+    // i2*beta*o(beta) + i4*o(beta)^2 - 1 == 0 terms: R2: 3, r1: 0, r0: 1 | * 1
+    // prove beta4^2-1=0 over Rq -> (-i2*x^(d/2)*beta+i2*x^(d/2)*o(beta))^2 =
+    // -i4*beta^2 + i2*beta*o(beta) -i4*o(beta)^2 - 1 == 0 terms: R2: 3, r1: 0,
+    // r0: 1 | * 1
+
+    printf("Setting up quad eqs for beta_v\n");
+    i = lambda / 2;
+
+    R2primei = _alloc_wrapper (sizeof (spolymat_t));
+    spolymat_alloc (R2primei, Rq, np2, np2, NELEMS_DIAG (np2));
+    R2prime_sz[i] = R2primei;
+    spolymat_set_empty (R2prime_sz[i]);
+    poly = spolymat_insert_elem (R2prime_sz[i], ibeta, ibeta);
+    poly_set_zero (poly);
+    coeff = poly_get_coeff (poly, 0);
+    int_set (coeff, params->inv4); // double check inv4 which was added to quad_eval_params
+    poly = spolymat_insert_elem (R2prime_sz[i], ibeta, ibeta + 1);
+    poly_set_zero (poly);
+    coeff = poly_get_coeff (poly, 0);
+    int_set (coeff, Rq->inv2);
+    poly = spolymat_insert_elem (R2prime_sz[i], ibeta + 1, ibeta + 1);
+    poly_set_zero (poly);
+    coeff = poly_get_coeff (poly, 0);
+    int_set (coeff, params->inv4);
+    R2prime_sz[i]->sorted = 1;
+
+    r1prime_sz[i] = NULL;
+
+    r0primei = _alloc_wrapper (sizeof (poly_t));
+    poly_alloc (r0primei, Rq);
+    r0prime_sz[i] = r0primei;
+    poly_set_zero (r0prime_sz[i]);
+    coeff = poly_get_coeff (r0prime_sz[i], 0);
+    int_set_i64 (coeff, -1);
 
 
 
 
+    /* accumulate schwarz-zippel .. */
+
+    // __schwartz_zippel_accumulate_beta4 ( // what should be here instead of params?
+    //       R2prime_sz, r1prime_sz, r0prime_sz, R2prime_sz2, r1prime_sz2,
+    //       r0prime_sz2, R2t, r1t, r0t, hashp, 0, params);
+
+    // __schwartz_zippel_accumulate_z4 (R2prime_sz, r1prime_sz, r0prime_sz,
+    //                                  R2prime_sz2, r1prime_sz2, r0prime_sz2,
+    //                                  R2t, r1t, r0t, Ds, Dm, u, oDs, oDm, zv,
+    //                                  hash0, d - 1, params);
+
+    // for (i = 0; i < lambda / 2; i++) {
+    //   DEBUG_PRINTF (DEBUG_LEVEL >= 2, "schwarz-zippel merge accumulators %u",
+    //                 i);
+    //   __schwartz_zippel_auto (R2prime_sz[i], r1prime_sz[i], r0prime_sz[i],
+    //                           R2prime_sz2[i], r1prime_sz2[i], r0prime_sz2[i],
+    //                           params->quad_eval);
+    // }
 
 
+    /* compute/output hi and set up quadeqs for lower level protocol */
+    // for (i = 0; i < lambda / 2; i++) {
+    //     polyvec_get_subvec (subv, s, 0, n_, 1);
 
-    // final thing to call -> inputs are still from tbox
-    // lnp_quad_many_prove (hash, tB, c, z1, z21, hint, s1, m, s2, tA2, A1, A2prime,
-    //                     Bprime, R2prime_sz, r1prime_sz, lambda / 2 + 2 + N,
-    //                     seed_cont2, quad);
+    //     __evaleq (tmp, R2prime_sz[i], r1prime_sz[i], r0prime_sz[i], subv);
+    //     poly = polyvec_get_elem (h, i); /* gi */
+    //     poly_add (poly, poly, tmp, 0);  /* hi = gi + schwarz zippel */
+
+    //     /* build quadeqs */
+    //     DEBUG_PRINTF (DEBUG_LEVEL >= 2, "set up quadeq %u", i);
+
+    //     /* r0 */
+    //     poly_sub (r0prime_sz[i], r0prime_sz[i], poly, 0); /* r0i -= -hi */
+
+    //     /* r1 */
+    //     r1prime_sz[i]->nelems_max = np;
+    //     poly = spolyvec_insert_elem (r1prime_sz[i],
+    //                                  2 * (quad_eval->m1 + quad_eval->l + i));
+    //     poly_set_one (poly);
+    //     r1prime_sz[i]->sorted = 1; /* above appends */
+
+    //     /* R2 only grows by lambda/2 zero rows/cols */
+    //     R2prime_sz[i]->nrows = np2;
+    //     R2prime_sz[i]->ncols = np2;
+    //     R2prime_sz[i]->nelems_max = NELEMS_DIAG (np2);
+    // }
+
+
+    // final thing to call -> double check last input and lambda/2 + 1
+    // lnp_quad_many_prove (hashp, tB, c, z1, z21, hint, s1, m, s2, tA2, A1, A2prime,
+    //                     Bprime, R2prime_sz, r1prime_sz, lambda / 2 + 1,
+    //                     seed_cont2, params->quad_many);
 
     /************************************************************************/
     /*                                                                      */
@@ -1327,3 +1483,798 @@ void test_lrot (const int_t mudulus) {
 //   _brandom (Rprimei, ncols, 1, cseed, 256 + i);
 // }
 
+
+
+
+
+
+
+/* swap row and col iff row > col */
+static inline void
+_diag (unsigned int *row, unsigned int *col, unsigned int r, unsigned int c)
+{
+  if (r > c)
+    {
+      *row = c;
+      *col = r;
+    }
+  else
+    {
+      *row = r;
+      *col = c;
+    }
+}
+
+#define MAX(x, y) ((x) >= (y) ? (x) : (y))
+
+/*
+ * r = U^T*auto(a) = U*auto(a)
+ * for each dim 2 subvec:
+ * (a,b) -> auto((b,a))
+ */
+static void
+__shuffleautovecsparse (spolyvec_t r)
+{
+  poly_ptr rp;
+  unsigned int i, elem;
+
+  DEBUG_PRINTF (DEBUG_PRINT_FUNCTION_ENTRY, "%s begin", __func__);
+
+  _SVEC_FOREACH_ELEM (r, i)
+  {
+    rp = spolyvec_get_elem (r, i);
+    elem = spolyvec_get_elem_ (r, i);
+
+    poly_auto_self (rp);
+    spolyvec_set_elem_ (r, i, elem % 2 == 0 ? elem + 1 : elem - 1);
+  }
+
+  r->sorted = 0; // XXX simpler sort possible
+  spolyvec_sort (r);
+
+  DEBUG_PRINTF (DEBUG_PRINT_FUNCTION_RETURN, "%s end", __func__);
+}
+
+/*
+ *
+ * r = U^T*auto(a)*U = U*auto(a)*U
+ * for each 2x2 submat on or above the main diagonal:
+ * [[a,b],[c,d]] -> auto([[d,c],[b,a]])
+ * r != a
+ */
+static void
+__shuffleauto2x2submatssparse (spolymat_t a)
+{
+  poly_ptr ap;
+  unsigned int i, arow, acol;
+
+  ASSERT_ERR (spolymat_get_nrows (a) % 2 == 0);
+  ASSERT_ERR (spolymat_get_ncols (a) % 2 == 0);
+  ASSERT_ERR (spolymat_is_upperdiag (a));
+
+  DEBUG_PRINTF (DEBUG_PRINT_FUNCTION_ENTRY, "%s begin", __func__);
+
+  _SMAT_FOREACH_ELEM (a, i)
+  {
+    ap = spolymat_get_elem (a, i);
+    arow = spolymat_get_row (a, i);
+    acol = spolymat_get_col (a, i);
+
+    if (arow % 2 == 0 && acol % 2 == 0)
+      {
+        spolymat_set_row (a, i, arow + 1);
+        spolymat_set_col (a, i, acol + 1);
+        poly_auto_self (ap);
+      }
+    else if (arow % 2 == 1 && acol % 2 == 1)
+      {
+        spolymat_set_row (a, i, arow - 1);
+        spolymat_set_col (a, i, acol - 1);
+        poly_auto_self (ap);
+      }
+    else if (arow % 2 == 1 && acol % 2 == 0)
+      {
+        spolymat_set_row (a, i, arow - 1);
+        spolymat_set_col (a, i, acol + 1);
+        poly_auto_self (ap);
+      }
+    else
+      {
+        /*
+         * arow % 2 == 0 && acol % 2 == 1
+         * This element's automorphism may land in the subdiagonal -1
+         * if the 2x2 submat is on the main diagonal.
+         * Check for this case and keep the matrix upper diagonal.
+         */
+        if (arow + 1 > acol - 1)
+          {
+            poly_auto_self (ap);
+          }
+        else
+          {
+            spolymat_set_row (a, i, arow + 1);
+            spolymat_set_col (a, i, acol - 1);
+            poly_auto_self (ap);
+          }
+      }
+  }
+  a->sorted = 0;
+  spolymat_sort (a);
+  ASSERT_ERR (spolymat_is_upperdiag (a));
+
+  DEBUG_PRINTF (DEBUG_PRINT_FUNCTION_RETURN, "%s end", __func__);
+}
+
+
+static void
+__schwartz_zippel_accumulate (spolymat_ptr R2i, spolyvec_ptr r1i, poly_ptr r0i,
+                              spolymat_ptr Rprime2i[], spolyvec_ptr rprime1i[],
+                              poly_ptr rprime0i[], unsigned int M_alt,
+                              const intvec_t v,
+                              const lnp_quad_eval_params_t params)
+{
+  abdlop_params_srcptr quad_eval = params->quad_eval;
+  polyring_srcptr Rq = quad_eval->ring;
+  const unsigned int m1 = quad_eval->m1;
+  const unsigned int l = quad_eval->l;
+  const unsigned int n = 2 * (m1 + l);
+  spolyvec_t u0, u1, u2;
+  spolymat_t t0, t1, t2;
+  unsigned int j;
+
+  DEBUG_PRINTF (DEBUG_PRINT_FUNCTION_ENTRY, "%s begin", __func__);
+
+  spolyvec_alloc (u0, Rq, n, n);
+  spolyvec_alloc (u1, Rq, n, n);
+  spolyvec_alloc (u2, Rq, n, n);
+  spolymat_alloc (t0, Rq, n, n, (n * n - n) / 2 + n);
+  spolymat_alloc (t1, Rq, n, n, (n * n - n) / 2 + n);
+  spolymat_alloc (t2, Rq, n, n, (n * n - n) / 2 + n);
+
+  /* R2i */
+
+  spolymat_set (t0, R2i);
+  for (j = 0; j < M_alt; j++)
+    {
+      if (Rprime2i[j] == NULL)
+        continue;
+
+      spolymat_fromcrt (Rprime2i[j]);
+
+      spolymat_scale (t1, intvec_get_elem (v, j), Rprime2i[j]);
+      spolymat_add (t2, t0, t1, 0);
+      spolymat_set (t0, t2);
+    }
+  spolymat_mod (R2i, t0);
+
+  /* r1i */
+
+  spolyvec_set (u0, r1i);
+  for (j = 0; j < M_alt; j++)
+    {
+      if (rprime1i[j] == NULL)
+        continue;
+
+      spolyvec_fromcrt (rprime1i[j]);
+
+      spolyvec_scale (u1, intvec_get_elem (v, j), rprime1i[j]);
+      spolyvec_add (u2, u0, u1, 0);
+      spolyvec_set (u0, u2);
+    }
+  spolyvec_mod (r1i, u0);
+
+  if (r0i != NULL)
+    {
+      for (j = 0; j < M; j++)
+        {
+          if (rprime0i[j] == NULL)
+            continue;
+
+          poly_fromcrt (rprime0i[j]);
+          poly_addscale (r0i, intvec_get_elem (v, j), rprime0i[j], 0);
+        }
+      poly_mod (r0i, r0i);
+    }
+
+  spolyvec_free (u0);
+  spolyvec_free (u1);
+  spolyvec_free (u2);
+  spolymat_free (t0);
+  spolymat_free (t1);
+  spolymat_free (t2);
+
+  DEBUG_PRINTF (DEBUG_PRINT_FUNCTION_RETURN, "%s end", __func__);
+}
+
+
+/* just add equations that have already been multiplied by a challenge. */
+static void
+__schwartz_zippel_accumulate_ (spolymat_ptr R2i, spolyvec_ptr r1i,
+                               poly_ptr r0i, spolymat_ptr Rprime2i[],
+                               spolyvec_ptr rprime1i[], poly_ptr rprime0i[],
+                               unsigned int M_alt,
+                               const lnp_quad_eval_params_t params)
+{
+  abdlop_params_srcptr quad_eval = params->quad_eval;
+  polyring_srcptr Rq = quad_eval->ring;
+  const unsigned int m1 = quad_eval->m1;
+  const unsigned int l = quad_eval->l;
+  const unsigned int n = 2 * (m1 + l);
+  spolyvec_t u0, u2;
+  spolymat_t t0, t2;
+  unsigned int j;
+
+  DEBUG_PRINTF (DEBUG_PRINT_FUNCTION_ENTRY, "%s begin", __func__);
+
+  spolyvec_alloc (u0, Rq, n, n);
+  spolyvec_alloc (u2, Rq, n, n);
+  spolymat_alloc (t0, Rq, n, n, (n * n - n) / 2 + n);
+  spolymat_alloc (t2, Rq, n, n, (n * n - n) / 2 + n);
+
+  /* R2i */
+
+  spolymat_set (t0, R2i);
+  for (j = 0; j < M_alt; j++)
+    {
+      if (Rprime2i[j] == NULL)
+        continue;
+
+      spolymat_fromcrt (Rprime2i[j]);
+
+      spolymat_add (t2, t0, Rprime2i[j], 0);
+      spolymat_set (t0, t2);
+    }
+  spolymat_mod (R2i, t0);
+
+  /* r1i */
+
+  spolyvec_set (u0, r1i);
+  for (j = 0; j < M_alt; j++)
+    {
+      if (rprime1i[j] == NULL)
+        continue;
+
+      spolyvec_fromcrt (rprime1i[j]);
+
+      spolyvec_add (u2, u0, rprime1i[j], 0);
+      spolyvec_set (u0, u2);
+    }
+  spolyvec_mod (r1i, u0);
+
+  if (r0i != NULL)
+    {
+      for (j = 0; j < M; j++)
+        {
+          if (rprime0i[j] == NULL)
+            continue;
+
+          poly_fromcrt (rprime0i[j]);
+          poly_add (r0i, r0i, rprime0i[j], 0);
+        }
+      poly_mod (r0i, r0i);
+    }
+
+  spolyvec_free (u0);
+  spolyvec_free (u2);
+  spolymat_free (t0);
+  spolymat_free (t2);
+
+  DEBUG_PRINTF (DEBUG_PRINT_FUNCTION_RETURN, "%s end", __func__);
+}
+
+
+static void
+__schwartz_zippel_auto (spolymat_ptr R2i, spolyvec_ptr r1i, poly_ptr r0i,
+                        spolymat_ptr R2i2, spolyvec_ptr r1i2, poly_ptr r0i2,
+                        const lnp_quad_eval_params_t params)
+{
+  abdlop_params_srcptr quad_eval = params->quad_eval;
+  polyring_srcptr Rq = quad_eval->ring;
+  const unsigned int d = polyring_get_deg (Rq);
+  const unsigned int m1 = quad_eval->m1;
+  const unsigned int l = quad_eval->l;
+  const unsigned int n = 2 * (m1 + l);
+  spolyvec_t u0, u1, u2;
+  spolymat_t t0, t1, t2;
+  poly_t tpoly;
+
+  DEBUG_PRINTF (DEBUG_PRINT_FUNCTION_ENTRY, "%s begin", __func__);
+
+  poly_alloc (tpoly, Rq);
+
+  spolyvec_alloc (u0, Rq, n, n);
+  spolyvec_alloc (u1, Rq, n, n);
+  spolyvec_alloc (u2, Rq, n, n);
+  spolymat_alloc (t0, Rq, n, n, (n * n - n) / 2 + n);
+  spolymat_alloc (t1, Rq, n, n, (n * n - n) / 2 + n);
+  spolymat_alloc (t2, Rq, n, n, (n * n - n) / 2 + n);
+
+  /* R2i */
+
+  spolymat_fromcrt (R2i);
+  spolymat_fromcrt (R2i2);
+
+  spolymat_set (t0, R2i);
+  __shuffleauto2x2submatssparse (t0);
+
+  spolymat_add (t1, R2i, t0, 0); // t1 = R2i + Uo(R2i)U
+
+  spolymat_set (t0, R2i2);
+  spolymat_lrot (t2, t0, d / 2);
+
+  spolymat_add (R2i, t1, t2, 0); // R2i = R2i + Uo(R2i)U + R2i2X^(d/2)
+
+  spolymat_set (t0, R2i2);
+  __shuffleauto2x2submatssparse (t0);
+  spolymat_lrot (t1, t0, d / 2);
+  spolymat_add (t0, R2i, t1,
+                0); // t0 = R2i + Uo(R2i)U + R2i2X^(d/2) +  Uo(R2i2)UX^(d/2)
+
+  spolymat_scale (R2i, Rq->inv2, t0);
+
+  /* r1i */
+
+  spolyvec_fromcrt (r1i);
+  spolyvec_fromcrt (r1i2);
+
+  spolyvec_set (u0, r1i);
+  __shuffleautovecsparse (u0);
+
+  spolyvec_add (u1, r1i, u0, 0); // u1 = r1i + Uo(r1i)U
+
+  spolyvec_set (u0, r1i2);
+  spolyvec_lrot (u2, u0, d / 2);
+
+  spolyvec_add (r1i, u1, u2, 0); // r1i = r1i + Uo(r1i)U + r1i2X^(d/2)
+
+  spolyvec_set (u0, r1i2);
+  __shuffleautovecsparse (u0);
+  spolyvec_lrot (u1, u0, d / 2);
+  spolyvec_add (u0, r1i, u1,
+                0); // t0 = r1i + Uo(r1i)U + r1i2X^(d/2) +  Uo(r1i2)UX^(d/2)
+
+  spolyvec_scale (r1i, Rq->inv2, u0);
+
+  /* r0i */
+  if (r0i != NULL)
+    {
+      poly_fromcrt (r0i);
+      poly_fromcrt (r0i2);
+
+      poly_auto (tpoly, r0i);
+      poly_add (r0i, r0i, tpoly, 0); // r0i = r0i + o(r0i)
+
+      poly_lrot (tpoly, r0i2, d / 2);
+      poly_add (r0i, r0i, tpoly, 0); // r0i = r0i + o(r0i) + r0i2X^(d/2)
+
+      poly_auto (tpoly, r0i2);
+      poly_lrot (tpoly, tpoly, d / 2);
+      poly_add (r0i, r0i, tpoly,
+                0); // r0i = r0i + o(r0i) + r0i2X^(d/2) + o(r0i2)X^(d/2)
+
+      poly_scale (r0i, Rq->inv2, r0i);
+    }
+
+  spolyvec_free (u0);
+  spolyvec_free (u1);
+  spolyvec_free (u2);
+  spolymat_free (t0);
+  spolymat_free (t1);
+  spolymat_free (t2);
+  poly_free (tpoly);
+
+  DEBUG_PRINTF (DEBUG_PRINT_FUNCTION_RETURN, "%s end", __func__);
+}
+
+
+/*
+ * R2i, r1i, r0i: first accumulator (lambda/2 eqs)
+ * R2i2, r1i2, r0i2: second accumulator (lambda/2 eqs)
+ * R2primei r1primei, r0primei: input eqs (M eqs)
+ * Result is in first accumulator.
+ */
+static void
+__schwartz_zippel_accumulate2 (spolymat_ptr R2i[], spolyvec_ptr r1i[],
+                               poly_ptr r0i[], spolymat_ptr R2i2[],
+                               spolyvec_ptr r1i2[], poly_ptr r0i2[],
+                               spolymat_ptr R2primei[],
+                               spolyvec_ptr r1primei[], poly_ptr r0primei[],
+                               unsigned int M_alt, const uint8_t seed[32],
+                               uint32_t dom,
+                               const lnp_quad_eval_params_t params)
+{
+  abdlop_params_srcptr quad_eval = params->quad_eval;
+  const unsigned int lambda = params->lambda;
+  polyring_srcptr Rq = quad_eval->ring;
+  int_srcptr q = polyring_get_mod (Rq);
+  const unsigned int log2q = polyring_get_log2q (Rq);
+  INTVEC_T (V, 2 * M_alt, Rq->q->nlimbs);
+  intvec_t subv1, subv2;
+  unsigned int i;
+
+  DEBUG_PRINTF (DEBUG_PRINT_FUNCTION_ENTRY, "%s begin", __func__);
+
+  intvec_get_subvec (subv1, V, 0, M_alt, 1);
+  intvec_get_subvec (subv2, V, M_alt, M_alt, 1);
+  intvec_urandom (V, q, log2q, seed, dom);
+
+  for (i = 0; i < lambda / 2; i++)
+    {
+      __schwartz_zippel_accumulate (R2i[i], r1i[i], r0i[i], R2primei, r1primei,
+                                    r0primei, M_alt, subv1, params);
+      __schwartz_zippel_accumulate (R2i2[i], r1i2[i], r0i2[i], R2primei,
+                                    r1primei, r0primei, M_alt, subv2, params);
+    }
+
+  DEBUG_PRINTF (DEBUG_PRINT_FUNCTION_RETURN, "%s end", __func__);
+}
+
+
+static void
+__schwartz_zippel_accumulate_beta4 (spolymat_ptr R2i[], spolyvec_ptr r1i[],
+                                    poly_ptr r0i[], spolymat_ptr R2i2[],
+                                    spolyvec_ptr r1i2[], poly_ptr r0i2[],
+                                    UNUSED spolymat_ptr R2t, spolyvec_ptr r1t,
+                                    UNUSED poly_ptr r0t,
+                                    const uint8_t seed[32], uint32_t dom,
+                                    const lnp_tbox_params_t params)
+{
+  abdlop_params_srcptr tbox = params->tbox;
+  const unsigned int Z = params->Z;
+  polyring_srcptr Rq = params->tbox->ring;
+  const unsigned int d = polyring_get_deg (Rq);
+  const unsigned int m1 = tbox->m1 - Z;
+  const unsigned int nex = params->nex;
+  const unsigned int l = tbox->l;
+  const unsigned int nprime = params->nprime;
+  const unsigned int loff
+      = (nprime > 0 ? 256 / d : 0) + (nex > 0 ? 256 / d : 0);
+  const unsigned int ibeta = (m1 + Z + l + loff) * 2;
+  poly_ptr poly;
+  int_ptr coeff;
+  unsigned int i;
+  spolymat_ptr R2tptr[1];
+  spolyvec_ptr r1tptr[1];
+  poly_ptr r0tptr[1];
+
+  // d-1 eval eqs in beta,o(beta), for i=1,...,d-1:
+  // prove const coeff of X^i * beta4 = 0 -> -i2*x^i*x^(d/2)*beta +
+  // i2*x^i*x^(d/2)*o(beta) = 0 terms: R2: 0, r1: 2, r0: 0 | * (d-1)
+  for (i = 1; i < d; i++)
+    {
+      R2tptr[0] = NULL;
+
+      spolyvec_set_empty (r1t);
+      poly = spolyvec_insert_elem (r1t, ibeta);
+      poly_set_zero (poly);
+      if (i < d / 2)
+        {
+          coeff = poly_get_coeff (poly, i + d / 2);
+          int_neg (coeff, Rq->inv2);
+        }
+      else
+        {
+          coeff = poly_get_coeff (poly, i + d / 2 - d);
+          int_set (coeff, Rq->inv2);
+        }
+      poly = spolyvec_insert_elem (r1t, ibeta + 1);
+      poly_set_zero (poly);
+      if (i < d / 2)
+        {
+          coeff = poly_get_coeff (poly, i + d / 2);
+          int_set (coeff, Rq->inv2);
+        }
+      else
+        {
+          coeff = poly_get_coeff (poly, i + d / 2 - d);
+          int_neg (coeff, Rq->inv2);
+        }
+      r1t->sorted = 1;
+      r1tptr[0] = r1t;
+
+      r0tptr[0] = NULL;
+
+      __schwartz_zippel_accumulate2 (R2i, r1i, r0i, R2i2, r1i2, r0i2, R2tptr,
+                                     r1tptr, r0tptr, 1, seed, dom + i,
+                                     params->quad_eval);
+    }
+}
+
+
+static void
+__schwartz_zippel_accumulate_z4 (spolymat_ptr R2i[], spolyvec_ptr r1i[],
+                                 poly_ptr r0i[], spolymat_ptr R2i2[],
+                                 spolyvec_ptr r1i2[], poly_ptr r0i2[],
+                                 spolymat_ptr R2t, spolyvec_ptr r1t,
+                                 poly_ptr r0t, polymat_t Ds, polymat_t Dm,
+                                 polyvec_t u, polymat_t oDs, polymat_t oDm,
+                                 polyvec_t z4, const uint8_t seed[32],
+                                 uint32_t dom, const lnp_tbox_params_t params)
+{
+  abdlop_params_srcptr tbox = params->tbox;
+  polyring_srcptr Rq = tbox->ring;
+  int_srcptr q = Rq->q;
+  const unsigned int log2q = polyring_get_log2q (Rq);
+  const unsigned int d = Rq->d;
+  const unsigned int Z = params->Z;
+  const unsigned int m1 = tbox->m1 - Z;
+  const unsigned int l = tbox->l;
+  const unsigned int nex = params->nex;
+  const unsigned int nprime = params->nprime;
+  const unsigned int loff3 = (nex > 0 ? 256 / d : 0);
+  const unsigned int loff4 = (nprime > 0 ? 256 / d : 0);
+  const unsigned int loff = loff3 + loff4;
+  const unsigned int ibeta = (m1 + Z + l + loff) * 2; // XXX correct
+  const unsigned int is1 = 0;
+  const unsigned int im = (m1 + Z) * 2;
+  const unsigned int iy4 = (m1 + Z + l + loff3) * 2; // XXX correct
+  unsigned int i, j, k;
+  int8_t Rprimei[nprime * d];
+  const unsigned int lambda = params->quad_eval->lambda;
+  spolymat_ptr R2tptr[1];
+  spolyvec_ptr r1tptr[1];
+  poly_ptr r0tptr[1];
+  int_ptr chal, acc;
+  polymat_t mat, vRDs, vRDm, vRpol;
+  polyvec_t subv1, subv2;
+  int_ptr coeff1, coeff2;
+  poly_ptr poly, poly2, poly3;
+  int_srcptr inv2 = Rq->inv2;
+  intvec_t row1;
+
+  INT_T (tmp, 2 * Rq->q->nlimbs);
+  INTVEC_T (u_, nprime * d, Rq->q->nlimbs);
+  INTVEC_T (z4_, 256, Rq->q->nlimbs);
+  INTMAT_T (V, lambda, 256, Rq->q->nlimbs);
+  INTMAT_T (vR_, lambda, nprime * d, Rq->q->nlimbs);
+  INTMAT_T (vR, lambda, nprime * d, 2 * Rq->q->nlimbs);
+  INTVEC_T (vRu, lambda, 2 * Rq->q->nlimbs);
+  intmat_urandom (V, q, log2q, seed, dom);
+
+  polymat_alloc (mat, Rq, nprime, MAX (m1, l));
+  polymat_alloc (vRpol, Rq, lambda, nprime);
+  polymat_alloc (vRDs, Rq, lambda, m1);
+  if (l > 0)
+    polymat_alloc (vRDm, Rq, lambda, l);
+
+  // eval eqs in s1,o(s1),m,o(m),y4,o(y4),beta,o(beta) (approx. range proof
+  // inf) prove z4 = y4 + beta4*Rprime*s4 over int vec of dim 256
+  //       y4 - z4 + beta4*Rprime*s4 = 0
+  //       y4 - z4 + beta4*Rprime*(Ds*s1+Dm*m+u) = 0  # view Ds resp Dm as int
+  //       rotation matrices in Z^(d*nprimexd*m1) resp Z^(d*nprimexd*l)
+  //   (Ds*s1+Dm*m+u is small, but Ds*s1, Dm*m, u do not need to be ..., so the
+  //   below holds mod q)
+  //       y4 - z4 + beta4*(Rprime*Ds)*s1 + beta4*(Rprime*Dm)*m +
+  //       beta4*(Rprime*u) = 0
+  // for i in 0,...,255
+  //       y4i - z4i + beta4*(Rprime*Ds)i*s1 + beta4*(Rprime*Dm)i*m +
+  //       beta4*(Rprime*u)i = 0
+  // terms: R2: 2m1+2l, r1: 3, r0: 1 | * 256
+
+  // compute vR=v*Rprime
+  // then vR*Ds, vR*Dm, vR*u
+
+  for (i = 0; i < loff4; i++)
+    {
+      poly = polyvec_get_elem (z4, i);
+      for (j = 0; j < d; j++)
+        {
+          coeff1 = poly_get_coeff (poly, j);
+          coeff2 = intvec_get_elem (z4_, i * d + j);
+          int_set (coeff2, coeff1);
+        }
+    }
+
+  intmat_set_zero (vR);
+
+  for (i = 0; i < 256; i++)
+    {
+      _expand_Rprime_i (Rprimei, nprime * d, i, seed);
+
+      for (k = 0; k < lambda; k++)
+        {
+          chal = intmat_get_elem (V, k, i);
+
+          for (j = 0; j < nprime * d; j++)
+            {
+              if (Rprimei[j] == 0)
+                {
+                }
+              else
+                {
+                  ASSERT_ERR (Rprimei[j] == 1 || Rprimei[j] == -1);
+
+                  acc = intmat_get_elem (vR, k, j);
+
+                  int_set (tmp, chal);
+                  int_mul_sgn_self (tmp, Rprimei[j]);
+                  int_add (acc, acc, tmp);
+                }
+            }
+        }
+    }
+
+  _MAT_FOREACH_ELEM (vR, i, j)
+  {
+    coeff1 = intmat_get_elem (vR, i, j);
+    coeff2 = intmat_get_elem (vR_, i, j); // XXX correct
+    int_mod (coeff2, coeff1, q);
+  }
+
+  if (u != NULL)
+    {
+      for (k = 0; k < nprime; k++)
+        {
+          intvec_get_subvec (row1, u_, d * k, d, 1);
+          poly = polyvec_get_elem (u, k);
+          intvec_set (row1, poly_get_coeffvec (poly));
+        }
+      for (k = 0; k < lambda; k++)
+        {
+          intmat_get_row (row1, vR_, k);
+          coeff1 = intvec_get_elem (vRu, k); // XXX correct
+          intvec_dot (coeff1, row1, u_);
+        }
+    }
+#if 0
+  int32_t RPRIME[nprime * d * 256];
+  INTMAT_T (Rprime, 256, nprime * d, 1);
+  for (i = 0; i < 256; i++)
+    {
+      _expand_Rprime_i (Rprimei, nprime * d, i, seed);
+      for (j = 0; j < nprime * d; j++)
+        RPRIME[i * (nprime * d) + j] = Rprimei[j];
+    }
+  intmat_set_i32 (Rprime, RPRIME);
+  intmat_dump (Rprime);
+  //intmat_dump (V);
+  //intmat_dump (vR);
+#endif
+
+  for (k = 0; k < lambda; k++)
+    {
+      for (i = 0; i < nprime; i++)
+        {
+          poly = polymat_get_elem (vRpol, k, i);
+          for (j = 0; j < d; j++)
+            {
+              coeff1 = intmat_get_elem (vR_, k, i * d + j);
+              coeff2 = poly_get_coeff (poly, j);
+
+              int_set (coeff2, coeff1);
+            }
+        }
+    }
+
+  if (Ds != NULL)
+    {
+      // XXXpolymat_get_submat (subm, mat, 0, 0, nprime, m1, 1, 1);
+      // XXXpolymat_auto (subm, Ds);
+
+      for (k = 0; k < lambda; k++)
+        {
+          polymat_get_row (subv1, vRpol, k);
+          polymat_get_row (subv2, vRDs, k); // correct
+
+          polyvec_mul2 (subv2, subv1, oDs);
+        }
+
+      polymat_lrot (vRDs, vRDs, d / 2); // * X^(d/2)  XXX correct
+    }
+
+  if (l > 0 && Dm != NULL)
+    {
+      // XXXpolymat_get_submat (subm, mat, 0, 0, nprime, l, 1, 1);
+      // XXXpolymat_auto (subm, Dm);
+
+      for (k = 0; k < lambda; k++)
+        {
+          polymat_get_row (subv1, vRpol, k);
+          polymat_get_row (subv2, vRDm, k); // correct
+
+          polyvec_mul2 (subv2, subv1, oDm);
+        }
+
+      polymat_lrot (vRDm, vRDm, d / 2); // * X^(d/2)  XXX correct
+    }
+
+  for (k = 0; k < lambda; k++)
+    {
+
+      spolymat_set_empty (R2t);
+      spolyvec_set_empty (r1t);
+      poly_set_zero (r0t);
+
+      R2tptr[0] = R2t;
+
+      if (Ds != NULL)
+        {
+          for (i = 0; i < m1; i++)
+            {
+              poly = spolymat_insert_elem (R2t, is1 + 1 + 2 * i, ibeta);
+              poly2 = spolymat_insert_elem (R2t, is1 + 1 + 2 * i, ibeta + 1);
+
+              poly3 = polymat_get_elem (vRDs, k, i);
+              poly_scale (poly2, inv2, poly3);
+              poly_neg (poly, poly2);
+              poly_redc (poly, poly);
+            }
+        }
+      if (l > 0 && Dm != NULL)
+        {
+          for (i = 0; i < l; i++)
+            {
+              poly = spolymat_insert_elem (R2t, im + 1 + 2 * i, ibeta);
+              poly2 = spolymat_insert_elem (R2t, im + 1 + 2 * i, ibeta + 1);
+
+              poly3 = polymat_get_elem (vRDm, k, i);
+              poly_scale (poly2, inv2, poly3);
+              poly_neg (poly, poly2);
+              poly_redc (poly, poly);
+            }
+        }
+
+      R2t->sorted = 1;
+
+      r1tptr[0] = r1t;
+
+      for (i = 0; i < loff4; i++)
+        {
+          poly = spolyvec_insert_elem (r1t, iy4 + 1 + 2 * i);
+          for (j = 0; j < d; j++)
+            {
+              coeff1 = poly_get_coeff (poly, j);
+              coeff2 = intmat_get_elem (V, k, i * d + j);
+              int_set (coeff1, coeff2);
+              int_redc (coeff1, coeff1, q);
+            }
+        }
+
+      if (u != NULL)
+        {
+          poly = spolyvec_insert_elem (r1t, ibeta);
+          poly2 = spolyvec_insert_elem (r1t, ibeta + 1);
+
+          poly_set_zero (poly2);
+          coeff1 = poly_get_coeff (poly2, d / 2);
+          coeff2 = intvec_get_elem (vRu, k);
+          int_mod (coeff1, coeff2, q);
+          int_mul (tmp, inv2, coeff1);
+          int_mod (coeff1, tmp, q);
+          int_redc (coeff1, coeff1, q);
+
+          poly_set_zero (poly);
+          coeff2 = poly_get_coeff (poly, d / 2);
+          int_neg (coeff2, coeff1);
+          int_redc (coeff2, coeff2, q);
+        }
+
+      r1t->sorted = 1;
+
+      r0tptr[0] = r0t;
+
+      poly_set_zero (r0t); // correct
+
+      intmat_get_row (row1, V, k);
+      intvec_dot (tmp, z4_, row1);
+      coeff1 = poly_get_coeff (r0t, 0);
+      int_mod (coeff1, tmp, q);
+      int_neg_self (coeff1);
+      int_redc (coeff1, coeff1, q);
+
+      if (k % 2 == 0)
+        __schwartz_zippel_accumulate_ (R2i[k / 2], r1i[k / 2], r0i[k / 2],
+                                       R2tptr, r1tptr, r0tptr, 1,
+                                       params->quad_eval);
+      else
+        __schwartz_zippel_accumulate_ (R2i2[k / 2], r1i2[k / 2], r0i2[k / 2],
+                                       R2tptr, r1tptr, r0tptr, 1,
+                                       params->quad_eval);
+    }
+
+  polymat_free (vRDs);
+  if (l > 0)
+    polymat_free (vRDm);
+  polymat_free (vRpol);
+  polymat_free (mat);
+}

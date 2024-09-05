@@ -9,7 +9,7 @@ d = 64                                           # ring degree
 m1 = 32                                          # length of bounded message s1
 #m1 = 10
 alpha = sqrt(d*m1 * 3 ^ 2)                       # bound on s1: l2(s1) <= alpha
-l = 47                                           # length of unbounded message m
+l = 37                                           # length of unbounded message m
 #l = 3
 # l = 32 * nr ciphertexts + y_s, y_l, y_v, beta_s, beta_l, beta_v
 
