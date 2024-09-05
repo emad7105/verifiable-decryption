@@ -13,4 +13,10 @@ static void *(*_alloc) (size_t) = alloc_default;
 static void *(*_realloc) (void *, size_t, size_t) = realloc_default;
 static void (*_free) (void *, size_t) = free_default;
 
+// Wrapper function declaration
+// void *alloc_default_wrapper (size_t)
+//     __attribute__ ((__returns_nonnull__, alloc_size (1)));
+
+void *(*_alloc_wrapper) (size_t) = alloc_default;
+
 #endif

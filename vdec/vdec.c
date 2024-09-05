@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include "lazer.h"
 #include "../src/brandom.h"
+// #include "../src/memory.h"
 // #include "brandom.h"
 #include "vdec_params_tbox.h"
 //#include "lnp-quad-eval-params1.h"
@@ -9,6 +10,8 @@
 
 #define N 1 /* number of quadratic equations */
 #define M 1 /* number of quadratic eval equations */
+
+#define NELEMS_DIAG(n) (((n) * (n) - (n)) / 2 + (n))
 
 static void vdec_lnp_tbox (uint8_t seed[32], const lnp_quad_eval_params_t params, 
                            polyvec_t sk, polyvec_t ct0, polyvec_t ct1, 
@@ -906,8 +909,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     polymat_t Bextprime;
 
     polyvec_free (s); // freeing this because this is used in the original proof from quad_eval_test. Later we can remove this
-    polyvec_alloc (s, Rq, 2 * (m1 + l));
-
+    polyvec_alloc (s, Rq, 2 * (m1 + params->quad_many->l)); // double check this l (from quad-many and not quad)
 
 
     // stuff from lnp-tbox (with adaptation)
@@ -983,6 +985,89 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     shake128_absorb (hstate, out, outlen);
     shake128_squeeze (hstate, hashp, 32);
     shake128_clear (hstate);
+
+
+
+    // instantiating QUAD + QUAD_EVAL eqs
+    spolymat_t R2t;
+    spolyvec_t r1t;
+    poly_t r0t;
+    const unsigned int n_ = 2 * (m1 + l);
+    const unsigned int np2 = 2 * (m1 + params->quad_many->l);
+    spolymat_ptr R2prime_sz[lambda / 2 + 2 + N], R2primei;
+    spolyvec_ptr r1prime_sz[lambda / 2 + 2 + N], r1primei;
+    poly_ptr r0prime_sz[lambda / 2 + 2 + N], r0primei;
+    spolymat_ptr R2prime_sz2[lambda / 2];
+    spolyvec_ptr r1prime_sz2[lambda / 2];
+    poly_ptr r0prime_sz2[lambda / 2];
+
+    /* allocate tmp space for 1 quadrativ eq */
+    spolymat_alloc (R2t, Rq, n_, n_, NELEMS_DIAG (n_));
+    spolymat_set_empty (R2t);
+
+    spolyvec_alloc (r1t, Rq, n_, n_);
+    spolyvec_set_empty (r1t);
+
+    poly_alloc (r0t, Rq);
+    poly_set_zero (r0t);
+
+    /* allocate lambda/2 eqs (schwarz-zippel accumulators) */
+    for (i = 0; i < lambda / 2; i++) {
+      R2primei = _alloc_wrapper (sizeof (spolymat_t));
+      spolymat_alloc (R2primei, Rq, np2, np2, NELEMS_DIAG (np2));
+      R2prime_sz[i] = R2primei;
+      spolymat_set_empty (R2prime_sz[i]);
+
+      R2prime_sz[i]->nrows = n_;
+      R2prime_sz[i]->ncols = n_;
+      R2prime_sz[i]->nelems_max = NELEMS_DIAG (n_);
+
+      r1primei = _alloc_wrapper (sizeof (spolyvec_t));
+      spolyvec_alloc (r1primei, Rq, np2, np2);
+      r1prime_sz[i] = r1primei;
+      spolyvec_set_empty (r1prime_sz[i]);
+
+      r1prime_sz[i]->nelems_max = n_;
+
+      r0primei = _alloc_wrapper (sizeof (poly_t));
+      poly_alloc (r0primei, Rq);
+      r0prime_sz[i] = r0primei;
+      poly_set_zero (r0prime_sz[i]);
+    }
+    for (i = 0; i < lambda / 2; i++) {
+      R2primei = _alloc_wrapper (sizeof (spolymat_t));
+      spolymat_alloc (R2primei, Rq, np2, np2, NELEMS_DIAG (np2));
+      R2prime_sz2[i] = R2primei;
+      spolymat_set_empty (R2prime_sz2[i]);
+
+      R2prime_sz2[i]->nrows = n_;
+      R2prime_sz2[i]->ncols = n_;
+      R2prime_sz2[i]->nelems_max = NELEMS_DIAG (n_);
+
+      r1primei = _alloc_wrapper (sizeof (spolyvec_t));
+      spolyvec_alloc (r1primei, Rq, np2, np2);
+      r1prime_sz2[i] = r1primei;
+      spolyvec_set_empty (r1prime_sz2[i]);
+
+      r1prime_sz[i]->nelems_max = n_;
+
+      r0primei = _alloc_wrapper (sizeof (poly_t));
+      poly_alloc (r0primei, Rq);
+      r0prime_sz2[i] = r0primei;
+      poly_set_zero (r0prime_sz2[i]);
+    }
+
+
+
+
+
+
+
+
+    // final thing to call -> inputs are still from tbox
+    // lnp_quad_many_prove (hash, tB, c, z1, z21, hint, s1, m, s2, tA2, A1, A2prime,
+    //                     Bprime, R2prime_sz, r1prime_sz, lambda / 2 + 2 + N,
+    //                     seed_cont2, quad);
 
     /************************************************************************/
     /*                                                                      */
