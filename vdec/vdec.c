@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include "lazer.h"
 #include "../src/brandom.h"
-// #include "../src/memory.h"
+#include "../src/memory.h"
 // #include "brandom.h"
 #include "vdec_params_tbox.h"
 //#include "lnp-quad-eval-params1.h"
@@ -1085,7 +1085,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     printf("Allocate lambda/2 eqs for sz accumulators\n");
     /* allocate lambda/2 eqs (schwarz-zippel accumulators) */
     for (i = 0; i < lambda / 2; i++) {
-      R2primei = _alloc_wrapper (sizeof (spolymat_t));
+      R2primei = alloc_wrapper(sizeof (spolymat_t));
       printf("Allocating\n");
       spolymat_alloc (R2primei, Rq, np2, np2, NELEMS_DIAG (np2));
       R2prime_sz[i] = R2primei;
@@ -1095,21 +1095,21 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
       R2prime_sz[i]->ncols = n_;
       R2prime_sz[i]->nelems_max = NELEMS_DIAG (n_);
 
-      r1primei = _alloc_wrapper (sizeof (spolyvec_t));
+      r1primei = alloc_wrapper (sizeof (spolyvec_t));
       spolyvec_alloc (r1primei, Rq, np2, np2);
       r1prime_sz[i] = r1primei;
       spolyvec_set_empty (r1prime_sz[i]);
 
       r1prime_sz[i]->nelems_max = n_;
 
-      r0primei = _alloc_wrapper (sizeof (poly_t));
+      r0primei = alloc_wrapper (sizeof (poly_t));
       poly_alloc (r0primei, Rq);
       r0prime_sz[i] = r0primei;
       poly_set_zero (r0prime_sz[i]);
     }
     printf("Allocate lambda/2 eqs for sz accumulators - part2\n");
     for (i = 0; i < lambda / 2; i++) {
-      R2primei = _alloc_wrapper (sizeof (spolymat_t));
+      R2primei = alloc_wrapper (sizeof (spolymat_t));
       spolymat_alloc (R2primei, Rq, np2, np2, NELEMS_DIAG (np2));
       R2prime_sz2[i] = R2primei;
       spolymat_set_empty (R2prime_sz2[i]);
@@ -1118,14 +1118,14 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
       R2prime_sz2[i]->ncols = n_;
       R2prime_sz2[i]->nelems_max = NELEMS_DIAG (n_);
 
-      r1primei = _alloc_wrapper (sizeof (spolyvec_t));
+      r1primei = alloc_wrapper (sizeof (spolyvec_t));
       spolyvec_alloc (r1primei, Rq, np2, np2);
       r1prime_sz2[i] = r1primei;
       spolyvec_set_empty (r1prime_sz2[i]);
 
       r1prime_sz[i]->nelems_max = n_;
 
-      r0primei = _alloc_wrapper (sizeof (poly_t));
+      r0primei = alloc_wrapper (sizeof (poly_t));
       poly_alloc (r0primei, Rq);
       r0prime_sz2[i] = r0primei;
       poly_set_zero (r0prime_sz2[i]);
@@ -1142,7 +1142,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     printf("Setting up quad eqs for beta_v\n");
     i = lambda / 2;
 
-    R2primei = _alloc_wrapper (sizeof (spolymat_t));
+    R2primei = alloc_wrapper (sizeof (spolymat_t));
     spolymat_alloc (R2primei, Rq, np2, np2, NELEMS_DIAG (np2));
     R2prime_sz[i] = R2primei;
     spolymat_set_empty (R2prime_sz[i]);
@@ -1162,7 +1162,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
 
     r1prime_sz[i] = NULL;
 
-    r0primei = _alloc_wrapper (sizeof (poly_t));
+    r0primei = alloc_wrapper (sizeof (poly_t));
     poly_alloc (r0primei, Rq);
     r0prime_sz[i] = r0primei;
     poly_set_zero (r0prime_sz[i]);

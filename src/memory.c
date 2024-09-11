@@ -66,8 +66,7 @@ free_default (void *mem, UNUSED size_t len)
 }
 
 
-// Wrapper function that is non-static and can be accessed from other files
-void *alloc_default_wrapper (size_t len)
-{
-    alloc_default(len);
+// Wrapper for the _alloc function pointer
+void *alloc_wrapper(size_t size) {
+    return _alloc(size);
 }
