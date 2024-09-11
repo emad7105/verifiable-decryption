@@ -64,3 +64,10 @@ free_default (void *mem, UNUSED size_t len)
 {
   free (mem);
 }
+
+
+// Wrapper function that is non-static and can be accessed from other files
+void *alloc_default_wrapper (size_t len)
+{
+    alloc_default(len);
+}
