@@ -623,7 +623,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     // }
     // printf("\n\n");
 
-    test_lrot(Rq->q);
+    test_lrot(Rq);
 
     INTVEC_T(ct1_coeffs_vec2, d * c0_m_v->nelems, Rq->q->nlimbs);
     intvec_ptr ct1_coeffs2 = &ct1_coeffs_vec2;
@@ -632,7 +632,8 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     intvec_reverse(ct1_coeffs, ct1_coeffs);
     INT_T (new, 2 * Rq->q->nlimbs);
     for (i=0; i<ct1_coeffs2->nelems; i++) {
-        intvec_lrot_pos(ct1_coeffs2, ct1_coeffs, i+1);
+        intvec_lrot(ct1_coeffs2, ct1_coeffs, i+1);
+        intvec_neg_self(ct1_coeffs2);
         //printf("%lld ", intvec_get_elem_i64(ct1_coeffs2, i));
         intvec_dot(new, ct1_coeffs2, u_s);
 
@@ -1417,51 +1418,64 @@ _expand_R_i2 (int8_t *Ri, unsigned int ncols, unsigned int i,
     brandom_wrapper(Ri, ncols, 1, cseed, i);
 }
 
-void test_lrot (const int_t mudulus) {
-    printf("\n- Testig lrot ...\n");
-    // Create a vector with 5 elements
-    INTVEC_T(my_vector, 5, 1);
+void test_lrot (const polyring_t ring) {
+    printf("\n- Testig rotation ...\n");
+    poly_t poly, poly2, poly3;
+    poly_alloc(poly, ring);
+    poly_alloc(poly2, ring);
+    poly_alloc(poly3, ring);
 
+    // Create a vector with 5 elements
+    INTVEC_T(my_vector, ring->d, ring->q->nlimbs);
     // Set elements to 1, 2, 3, 4, 5
+    for (size_t i = 0; i < ring->d; i++)
+    {
+        intvec_set_elem_i64(my_vector, i, i+1);
+    }
     intvec_set_elem_i64(my_vector, 0, 1);
-    intvec_set_elem_i64(my_vector, 1, 2);
-    intvec_set_elem_i64(my_vector, 2, 3);
-    intvec_set_elem_i64(my_vector, 3, 4);
-    intvec_set_elem_i64(my_vector, 4, 5);
     printf("my_vector1: " );
     intvec_dump(my_vector); // prints vector
 
-    INTVEC_T(my_vector2, 5, 1);
+    poly_set_coeffvec(poly, my_vector);
+    for (size_t i = 0; i < poly->coeffs->nelems; i++)
+        printf("%lld ", (long long)intvec_get_elem_i64(poly->coeffs, i));
+    printf("\n");
 
+    INTVEC_T(my_vector2, ring->d, ring->q->nlimbs);
     // Set elements to 1, 2, 3, 4, 5
+    for (size_t i = 0; i < ring->d; i++)
+    {
+        intvec_set_elem_i64(my_vector2, i, i+1);
+    }
     intvec_set_elem_i64(my_vector2, 0, 1);
-    intvec_set_elem_i64(my_vector2, 1, 2);
-    intvec_set_elem_i64(my_vector2, 2, 3);
-    intvec_set_elem_i64(my_vector2, 3, 4);
-    intvec_set_elem_i64(my_vector2, 4, 5);
     printf("my_vector2: " );
     intvec_dump(my_vector2); // prints vector
 
+    poly_set_coeffvec(poly2, my_vector2);
+    for (size_t i = 0; i < poly2->coeffs->nelems; i++)
+        printf("%lld ", (long long)intvec_get_elem_i64(poly2->coeffs, i));
+    printf("\n");
 
-    INTVEC_T(my_vector_rotated, 5, 1);
+    INTVEC_T(my_vector_rotated, ring->d, ring->q->nlimbs);
     intvec_ptr my_vector_rotated_ptr = &my_vector_rotated;
 
 
     intvec_reverse(my_vector, my_vector);
 
     // Rot(my_vector) * my_vector2
-    INTVEC_T(rot_s_vec, 5, 1);
-    INT_T (new, 1);
+    INTVEC_T(rot_s_vec, ring->d, ring->q->nlimbs);
+    INT_T (new, 2*ring->q->nlimbs);
     for (int i=0; i<my_vector_rotated_ptr->nelems; i++) {
-        intvec_lrot_pos(my_vector_rotated_ptr, my_vector, i+1);
+        intvec_lrot(my_vector_rotated_ptr, my_vector, i+1);
+        intvec_neg_self(my_vector_rotated_ptr);
         //intvec_dump(my_vector_rotated);
         intvec_dot(new, my_vector_rotated_ptr, my_vector2);
 
         // do we need to do mod and redc?
         //printf("new1: %lld\n", int_get_i64(new));
-        int_mod(new, new, mudulus);
+        //int_mod(new, new, ring->q);
         //printf("new2: %lld\n", int_get_i64(new));
-        //int_redc(new, new, Rq->q);
+        //int_redp(new, new, ring->q);
         //printf("new3: %lld\n", int_get_i64(new));
         intvec_set_elem(&rot_s_vec, i, new);
 
@@ -1470,10 +1484,14 @@ void test_lrot (const int_t mudulus) {
 
     printf("Rot(my_vector) * my_vector2: " );
     intvec_dump(rot_s_vec); // prints vector
+    printf("\n");
+
+    poly_mul(poly3, poly, poly2);
+    poly_redc(poly3, poly3);
+    intvec_dump(poly3->coeffs);
 
     printf("- Testig lrot ended.\n");
 }
-
 
 /* expand i-th row of Rprime from cseed and 256 + i */
 // static inline void
