@@ -2072,6 +2072,7 @@ __schwartz_zippel_accumulate_z4 (spolymat_ptr R2i[], spolyvec_ptr r1i[],
   // compute vR=v*Rprime
   // then vR*Ds, vR*Dm, vR*u
 
+  // instantiates z4_ intvec of coefficients of z4
   for (i = 0; i < loff4; i++)
     {
       poly = polyvec_get_elem (z4, i);
@@ -2084,7 +2085,7 @@ __schwartz_zippel_accumulate_z4 (spolymat_ptr R2i[], spolyvec_ptr r1i[],
     }
 
   intmat_set_zero (vR);
-
+  // vR is lambda * nprime*d matrix where challenge k out of lambda multiplies line k of matrix R
   for (i = 0; i < 256; i++)
     {
       _expand_Rprime_i (Rprimei, nprime * d, i, seed);
@@ -2112,6 +2113,7 @@ __schwartz_zippel_accumulate_z4 (spolymat_ptr R2i[], spolyvec_ptr r1i[],
         }
     }
 
+  // vR_ is same as vR but with correct number of limbs (after mod q)
   _MAT_FOREACH_ELEM (vR, i, j)
   {
     coeff1 = intmat_get_elem (vR, i, j);
@@ -2119,6 +2121,8 @@ __schwartz_zippel_accumulate_z4 (spolymat_ptr R2i[], spolyvec_ptr r1i[],
     int_mod (coeff2, coeff1, q);
   }
 
+  // generates u_, intvec with coefficients of elements in u.
+  // vRu is intvec of lambda entries, vRu = vR_ * u_
   if (u != NULL)
     {
       for (k = 0; k < nprime; k++)
@@ -2149,6 +2153,8 @@ __schwartz_zippel_accumulate_z4 (spolymat_ptr R2i[], spolyvec_ptr r1i[],
   //intmat_dump (vR);
 #endif
 
+  // vRpol is polymat lambda * nprime
+  // consists of the ring elements obtained from the coefficients in vR_
   for (k = 0; k < lambda; k++)
     {
       for (i = 0; i < nprime; i++)
@@ -2164,6 +2170,9 @@ __schwartz_zippel_accumulate_z4 (spolymat_ptr R2i[], spolyvec_ptr r1i[],
         }
     }
 
+  // vRDs is lambda * m1 polymat
+  // each row is the dot product of a row of vRpol with oDs
+  // at the end, the whole matrix is multiplied by X^(d/2)
   if (Ds != NULL)
     {
       // XXXpolymat_get_submat (subm, mat, 0, 0, nprime, m1, 1, 1);
@@ -2180,6 +2189,7 @@ __schwartz_zippel_accumulate_z4 (spolymat_ptr R2i[], spolyvec_ptr r1i[],
       polymat_lrot (vRDs, vRDs, d / 2); // * X^(d/2)  XXX correct
     }
 
+  // same as vRDs but with Dm
   if (l > 0 && Dm != NULL)
     {
       // XXXpolymat_get_submat (subm, mat, 0, 0, nprime, l, 1, 1);
@@ -2236,6 +2246,7 @@ __schwartz_zippel_accumulate_z4 (spolymat_ptr R2i[], spolyvec_ptr r1i[],
 
       r1tptr[0] = r1t;
 
+      // go to the elements of r1t that will multiply o(y4) and multiply the coefficients with challenges v
       for (i = 0; i < loff4; i++)
         {
           poly = spolyvec_insert_elem (r1t, iy4 + 1 + 2 * i);
@@ -2248,6 +2259,8 @@ __schwartz_zippel_accumulate_z4 (spolymat_ptr R2i[], spolyvec_ptr r1i[],
             }
         }
 
+      // set ibeta  coefficient d/2 to be -1/2 * vRu
+      // set ibeta+1 coefficient d/2 to be 1/2 * vRu 
       if (u != NULL)
         {
           poly = spolyvec_insert_elem (r1t, ibeta);
