@@ -5,7 +5,7 @@
 // #include "brandom.h"
 #include "vdec_params_tbox.h"
 //#include "lnp-quad-eval-params1.h"
-#include "vdec_ct.h"
+#include "vdec_ct_newq.h"
 #include <mpfr.h>
 
 #define N 1 /* number of quadratic equations */
@@ -16,8 +16,7 @@
 
 static void vdec_lnp_tbox (uint8_t seed[32], const lnp_quad_eval_params_t params, 
                            polyvec_t sk, polyvec_t ct0, polyvec_t ct1, 
-                           polyvec_t m_delta, polyvec_t vinh, polyvec_t e, 
-                           int_t fhe_modulus, unsigned int fhe_degree);
+                           polyvec_t m_delta, unsigned int fhe_degree);
 
 static inline void _expand_R_i2 (int8_t *Ri, unsigned int ncols, unsigned int i,
                                 const uint8_t cseed[32]);
@@ -98,9 +97,10 @@ int main(void)
     
     /* fhe parameters */
     const unsigned int fhe_degree = 2048;
-    const int_t fhe_modulus;
-    int_alloc(fhe_modulus, Rq->q->nlimbs);
-    int_set_i64(fhe_modulus, 2^54+1);
+    //const int_t fhe_modulus;
+    //int_alloc(fhe_modulus, Rq->q->nlimbs);
+    //int_set_i64(fhe_modulus, 2^54+1);
+    printf("\nproof modulus: \n");
 
     /* INIT sk */
     POLYVEC_T(sk_vec_polys, Rq, fhe_degree/proof_degree);
@@ -159,39 +159,13 @@ int main(void)
     }
     // print_polyvec_element("First element of mdelta", mdelta_vec_polys, 0, 64);
 
-    /* INIT v_inh */
-    POLYVEC_T(vinh_vec_polys, Rq, fhe_degree/proof_degree);
-    
-    for (size_t i=0; i<(fhe_degree/proof_degree) ; i++) {
-        poly = polyvec_get_elem(vinh_vec_polys, i);
-        coeffs = poly_get_coeffvec (poly);
-        for (size_t j=0; j<proof_degree ; j++) {
-            intvec_set_elem_i64(coeffs,j,static_v_inh[j+i*proof_degree]);
-            // printf("sk elem: %d\n", static_ct0[j+i*proof_degree]);
-        }
-    }
-    // print_polyvec_element("First element of vinh", vinh_vec_polys, 0, 64);
-
-    /* INIT e */
-    POLYVEC_T(e_vec_polys, Rq, fhe_degree/proof_degree);
-    
-    for (size_t i=0; i<(fhe_degree/proof_degree) ; i++) {
-        poly = polyvec_get_elem(e_vec_polys, i);
-        coeffs = poly_get_coeffvec (poly);
-        for (size_t j=0; j<proof_degree ; j++) {
-            intvec_set_elem_i64(coeffs,j,static_e[j+i*proof_degree]);
-            // printf("sk elem: %d\n", static_e[j+i*proof_degree]);
-        }
-    }
-    // print_polyvec_element("First element of e", e_vec_polys, 0, 64);
 
 
     uint8_t seed[32] = { 0 };
     seed[0] = 2;
 
     vdec_lnp_tbox (seed, params1, sk_vec_polys, ct0_vec_polys, ct1_vec_polys, 
-                   mdelta_vec_polys, vinh_vec_polys, e_vec_polys, fhe_modulus,
-                   fhe_degree);
+                   mdelta_vec_polys, fhe_degree);
 
     mpfr_free_cache();
     printf("Finished.\n");
@@ -262,8 +236,7 @@ _scatter_vec(spolyvec_ptr r1, spolyvec_ptr r1_, unsigned int m1,
 
 static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,  
                           polyvec_t sk, polyvec_t ct0, polyvec_t ct1, 
-                          polyvec_t m_delta, polyvec_t vinh, polyvec_t e, 
-                          int_t fhe_modulus, unsigned int fhe_degree)
+                          polyvec_t m_delta, unsigned int fhe_degree)
 {
     // #region Copy quad-eval-test.c 
     abdlop_params_srcptr abdlop = params->quad_eval;
@@ -521,8 +494,8 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     polyvec_set(tobe_sk, sk);
 
     // TODO: to be removed according to latest version of the protocol
-    polyvec_get_subvec(tobe_m, m, 0, vinh->nelems,1);
-    polyvec_set(tobe_m, vinh);
+    //polyvec_get_subvec(tobe_m, m, 0, vinh->nelems,1);
+    //polyvec_set(tobe_m, vinh);
     // polyvec_get_subvec(s1_, s1, 0, m1, 1);
     // polyvec_get_subvec(m_, m, 0, l, 1);
 
@@ -535,15 +508,13 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     // #endregion
 
     // #region build u vectors
-    // TODO: only 1 u will be kept
 
-    // build u vectors - u_s = [sk], u_l = [l_i], u_v = [vinh]
+
+    // build u vector - u_v (and temporary u_s = sk in coefficient form)
+    INTVEC_T(u_v_vec, d * ct0->nelems, Rq->q->nlimbs);
     INTVEC_T(u_s_vec, d * sk->nelems, Rq->q->nlimbs);
-    INTVEC_T(u_l_vec, d * vinh->nelems, Rq->q->nlimbs);
-    INTVEC_T(u_v_vec, d * vinh->nelems, Rq->q->nlimbs);
-    intvec_ptr u_s = &u_s_vec;
-    intvec_ptr u_l = &u_l_vec;
     intvec_ptr u_v = &u_v_vec;
+    intvec_ptr u_s = &u_s_vec;
 
     poly_ptr poly_tmp;
     intvec_ptr coeffs;
@@ -556,40 +527,18 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
             intvec_set_elem(u_s_vec, i*d+j, intvec_get_elem(coeffs, j));
         }
     }
-    // print_polyvec_element("element of sk", sk, 31, 64);
-    // printf("u_s nelems = %d\n", u_s->nelems);
-    // for (i=0; i<d; i++) {
-    //     printf("%lld ", intvec_get_elem_i64(u_s, i+31*d));
-    // }
-    // printf("\n\n");
 
-    // u_v
-    for (i=0; i<vinh->nelems; i++) {
-        poly_tmp = polyvec_get_elem(vinh, i);     
-        coeffs = poly_get_coeffvec (poly_tmp);
-        for (j=0; j<d; j++) {
-            intvec_set_elem(u_v, i*d+j, intvec_get_elem(coeffs, j));
-        }
-    }
-    // print_polyvec_element("element of vinh", vinh, 31, 64);
-    // printf("u_s nelems = %d\n", u_v->nelems);
-    // for (i=0; i<d; i++) {
-    //     printf("%lld ", intvec_get_elem_i64(u_v, i+31*d));
-    // }
-    // printf("\n\n");
+    // u_v  
+    printf("start u_v build\n");
+    polyvec_t c0_m;
+    polyvec_alloc(c0_m, Rq, ct0->nelems);
+    polyvec_sub(c0_m, ct0, m_delta, 0);
 
-    // u_l
-    printf("start u_l build\n");
-    polyvec_t c0_m_v;
-    polyvec_alloc(c0_m_v, Rq, vinh->nelems);
-    polyvec_sub(c0_m_v, ct0, m_delta, 0);
-    polyvec_sub(c0_m_v, c0_m_v, vinh, 0);
-
-    // generate intvec with coeffs of ct0 - delta_m - vinh
-    INTVEC_T(sum_tmp_vec, d * c0_m_v->nelems, Rq->q->nlimbs);
+    // generate intvec with coeffs of ct0 - delta_m
+    INTVEC_T(sum_tmp_vec, d * c0_m->nelems, Rq->q->nlimbs);
     intvec_ptr sum_tmp = &sum_tmp_vec;
-    for (i=0; i<c0_m_v->nelems; i++) {
-        poly_tmp = polyvec_get_elem(c0_m_v, i); 
+    for (i=0; i<c0_m->nelems; i++) {
+        poly_tmp = polyvec_get_elem(c0_m, i); 
         coeffs = poly_get_coeffvec (poly_tmp);
         for (j=0; j<d; j++) {
             intvec_set_elem(sum_tmp, i*d+j, intvec_get_elem(coeffs, j));
@@ -604,11 +553,11 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
 
     // generate intvec with coeffs of ct1, do rotations and
     // dot product with u_s
-    INTVEC_T(rot_s_vec, d * c0_m_v->nelems, Rq->q->nlimbs);
+    INTVEC_T(rot_s_vec, d * c0_m->nelems, Rq->q->nlimbs);
     intvec_ptr rot_s = &rot_s_vec;
 
     // getting ct1 coeffs
-    INTVEC_T(ct1_coeffs_vec, d * c0_m_v->nelems, Rq->q->nlimbs);
+    INTVEC_T(ct1_coeffs_vec, d * c0_m->nelems, Rq->q->nlimbs);
     intvec_ptr ct1_coeffs = &ct1_coeffs_vec;
     for (i=0; i<ct1->nelems; i++) {
         poly_tmp = polyvec_get_elem(ct1, i);     
@@ -623,9 +572,9 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     // }
     // printf("\n\n");
 
-    test_lrot(Rq);
+    //test_lrot(Rq);
 
-    INTVEC_T(ct1_coeffs_vec2, d * c0_m_v->nelems, Rq->q->nlimbs);
+    INTVEC_T(ct1_coeffs_vec2, d * c0_m->nelems, Rq->q->nlimbs);
     intvec_ptr ct1_coeffs2 = &ct1_coeffs_vec2;
 
     // rotating coeffs of ct1 and multiplying with u_s
@@ -641,7 +590,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
         //printf("new1: %lld\n", int_get_i64(new));
         int_mod(new, new, Rq->q);
         //printf("new2: %lld\n", int_get_i64(new));
-        //int_redc(new, new, Rq->q);
+        int_redc(new, new, Rq->q);
         //printf("new3: %lld\n", int_get_i64(new));
         intvec_set_elem(rot_s, i, new);
 
@@ -657,30 +606,15 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     // printf("ct1_1: %lld \n", intvec_get_elem_i64(ct1_coeffs, 0));
     // printf("ct1_2: %lld \n", intvec_get_elem_i64(ct1_coeffs2, ct1_coeffs->nelems - 1));
 
-    // adding other parts of u_l
-    intvec_add(u_l, rot_s, sum_tmp); 
-
-    
-    // dividing by q
-    INT_T (inv_fhe_q, Rq->q->nlimbs);
-    int_invmod(inv_fhe_q, fhe_modulus, Rq->q);
-    // do we need the next line? here and everywhere after mod?
-    //int_redc(inv_fhe_q, inv_fhe_q, Rq->q);
-    
-    int_ptr tmp_ul;
-    INT_T (tmp_ul_mult, 2*(Rq->q->nlimbs));
-    for (i=0; i<u_l->nelems; i++) {
-        tmp_ul = intvec_get_elem(u_l, i);
-        int_mul(tmp_ul_mult, tmp_ul, inv_fhe_q);
-        int_mod(tmp_ul, tmp_ul_mult, Rq->q);
-    }
+    // adding other parts of u_v
+    intvec_add(u_v, rot_s, sum_tmp); 
     //printf("\n\n");
     // for (i=0; i<u_l->nelems-1; i++)
     //     printf("(%d, %d) ", intvec_get_elem_i64(u_l, i), intvec_get_elem(u_l, i)->nlimbs);
     // printf("\n");
     //printf("u_l[0] = %lld, nlimbs = %d\n", intvec_get_elem_i64(u_l, i), intvec_get_elem(u_l, i)->nlimbs);
 
-    printf("finished u_l build\n");
+    printf("finished u_v build\n");
 
     // #endregion
 
@@ -690,7 +624,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     /*                                                                      */
     /************************************************************************/
     // size of original bdlop message - without y's and beta's
-    const unsigned int short_l = vinh->nelems;
+    const unsigned int short_l = 0;
     
     // prepare randomness sent to lnp_tbox_prove from lnp-tbox-test
     memset (hashp, 0xff, 32); 
@@ -726,18 +660,13 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     const unsigned int kmsis = abdlop->kmsis;
     const unsigned int m2 = abdlop->m2;
     // todo: why not instantiating s3coeffs?
-    //INTVEC_T (ys_coeffs, 256, int_get_nlimbs (Rq->q));
-    //INTVEC_T (yl_coeffs, 256, int_get_nlimbs (Rq->q));
     INTVEC_T (yv_coeffs, 256, int_get_nlimbs (Rq->q));
-    //INTVEC_T (zs_coeffs, 256, int_get_nlimbs (Rq->q));
-    //INTVEC_T (zl_coeffs, 256, int_get_nlimbs (Rq->q));
     INTVEC_T (zv_coeffs, 256, int_get_nlimbs (Rq->q));
     polyvec_t tmp_polyvec, s1_, m_, s21, // s1_, m_ are probably not needed
-              ys_, yl_, yv_, tys, tyl, tyv, 
-              tbeta, beta, ys, yl, yv, 
-              zs, zl, zv, zs_, zl_, zv_;
+              yv_, tyv, tbeta, beta, yv, 
+              zv, zv_;
     // intvec_ptr coeffs; // already declared
-    polymat_t Bys, Byl, Byv, Bbeta;
+    polymat_t Byv, Bbeta;
     shake128_state_t hstate_z34;
     coder_state_t cstate_z34;
     rng_state_t rstate_signs;
@@ -748,23 +677,17 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     uint8_t out_z34[CEIL (256 * 2 * log2q + d * log2q, 8) + 1];
     uint8_t cseed[32]; /* seed for challenge */
     //poly_ptr poly; // already declared
-    int beta_s = 0, beta_l = 0, beta_v;
+    int beta_v;
     int rej;
 
     // what is this for??
     memset (out_z34, 0, CEIL (256 * 2 * log2q + d * log2q, 8) + 1); // XXX
     
-    //polyvec_alloc (ys, Rq, 256 / d);
-    //polyvec_alloc (yl, Rq, 256 / d);
     polyvec_alloc (yv, Rq, 256 / d);
-    //polyvec_alloc (zs, Rq, 256 / d);
-    //polyvec_alloc (zl, Rq, 256 / d);
     polyvec_alloc (zv, Rq, 256 / d);
-    //polyvec_alloc (zs_, Rq, 256 / d);
-    //polyvec_alloc (zl_, Rq, 256 / d);
     polyvec_alloc (zv_, Rq, 256 / d);
 
-    printf("allocated space for building z's\n");
+    printf("allocated space for building zv\n");
 
     /* s1 = s1_,upsilon, m = m_,y3_,y4_,beta */
     // from lnp-tbox: s1_ m_ probably not needed
@@ -778,22 +701,6 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
 
     /* tB = tB_,ty,tbeta */
     loff = 0;
-    // //polyvec_get_subvec (upsilon, s1, m1, Z, 1);
-    // polyvec_get_subvec (ys_, m, short_l + loff, 256 / d, 1);
-    // polyvec_get_subvec (tys, tB, short_l + loff, 256 / d, 1);
-    // // why does this submat have m2-kmsis cols? and not m2?
-    // polymat_get_submat (Bys, Bprime, short_l + loff, 0, 256 / d, m2 - kmsis, 1, 1);
-    // polyvec_set_coeffvec2 (ys, ys_coeffs);
-    // polyvec_set_coeffvec2 (zs_, zs_coeffs);
-    // loff += 256 / d;
-
-    // polyvec_get_subvec (yl_, m, short_l + loff, 256 / d, 1);
-    // polyvec_get_subvec (tyl, tB, short_l + loff, 256 / d, 1);
-    // polymat_get_submat (Byl, Bprime, short_l + loff, 0, 256 / d, m2 - kmsis, 1, 1);
-    // polyvec_set_coeffvec2 (yl, yl_coeffs);
-    // polyvec_set_coeffvec2 (zl_, zl_coeffs);
-    // loff += 256 / d;
-
     polyvec_get_subvec (yv_, m, short_l + loff, 256 / d, 1);
     polyvec_get_subvec (tyv, tB, short_l + loff, 256 / d, 1);
     polymat_get_submat (Byv, Bprime, short_l + loff, 0, 256 / d, m2 - kmsis, 1, 1);
@@ -805,7 +712,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     polymat_get_submat (Bbeta, Bprime, short_l + loff, 0, 1, m2 - kmsis, 1, 1);
     printf("tbeta in pos: %d out of %d\n", short_l+loff, tB->nelems);
 
-    printf("extracted subvecs for y's and beta's commitments\n");
+    printf("extracted subvecs for yv and beta commitments\n");
 
 
     // what is this for? -> rejection sampling state
@@ -860,8 +767,6 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
 
         /* encode ty, tbeta, hash of encoding is seed for challenges */
         coder_enc_begin (cstate_z34, out_z34);
-        //coder_enc_urandom3 (cstate, tys, Rq->q, log2q);
-        //coder_enc_urandom3 (cstate, tyl, Rq->q, log2q);
         coder_enc_urandom3 (cstate_z34, tyv, Rq->q, log2q);
         coder_enc_urandom3 (cstate_z34, tbeta, Rq->q, log2q);
         coder_enc_end (cstate_z34);
@@ -946,21 +851,13 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     memcpy (hashp, cseed, 32); // hashp is called hash in compute_z34
 
     /* output proof (h,c,z1,z21,hint,z3,z4) */
-    polyvec_set (zs, zs_);
-    polyvec_set (zl, zl_);
     polyvec_set (zv, zv_);
 
     /* cleanup */
     printf("will cleanup after calculating z's\n");
     rng_clear (rstate_signs);
     rng_clear (rstate_rej);
-    //polyvec_free (s3);
-    //polyvec_free (s4);
-    //polyvec_free (ys);
-    //polyvec_free (yl);
     polyvec_free (yv);
-    //polyvec_free (zs_);
-    //polyvec_free (zl_);
     polyvec_free (zv_);
     printf("finished cleaning up after z's\n");
 
@@ -2215,6 +2112,9 @@ __schwartz_zippel_accumulate_z4 (spolymat_ptr R2i[], spolyvec_ptr r1i[],
 
       R2tptr[0] = R2t;
 
+      // get elements that multiply with o(s1) and with beta and o(beta)
+      // set (o(s1),ibeta) element to be -1/2 * vRDs
+      // set (o(s1),ibeta+1) element to be 1/2 * vRDs 
       if (Ds != NULL)
         {
           for (i = 0; i < m1; i++)
