@@ -476,7 +476,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     const unsigned int log2stdev4 = 1.55; // TODO: set this correctly /* stdev4 = 1.55 * 2^log2stdev2 */
 
     // copied from lnp-tbox-params1.h
-    static const limb_t params1_scM4_limbs[] = {1655797669362676316UL, 318580927907168899UL, 1UL};
+    //static const limb_t params1_scM4_limbs[] = {1655797669362676316UL, 318580927907168899UL, 1UL};
     static const int_t scM4 = {{(limb_t *)params1_scM4_limbs, 3, 0}};
     static const limb_t params1_stdev4sq_limbs[] = {157450UL, 0UL};
     static const int_t stdev4sqr = {{(limb_t *)params1_stdev4sq_limbs, 2, 0}};
