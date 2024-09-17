@@ -37,17 +37,19 @@ static void __schwartz_zippel_accumulate2 (
     spolymat_ptr R2primei[], spolyvec_ptr r1primei[], poly_ptr r0primei[],
     unsigned int M_alt, const uint8_t seed[32], uint32_t dom,
     const lnp_quad_eval_params_t params);
-static void __schwartz_zippel_accumulate_beta4 (
+static void __schwartz_zippel_accumulate_beta (
     spolymat_ptr R2i[], spolyvec_ptr r1i[], poly_ptr r0i[],
     spolymat_ptr R2i2[], spolyvec_ptr r1i2[], poly_ptr r0i2[],
     spolymat_ptr R2t, spolyvec_ptr r1t, poly_ptr r0t, const uint8_t seed[32],
-    uint32_t dom, const lnp_tbox_params_t params);
-static void __schwartz_zippel_accumulate_z4 (
-    spolymat_ptr R2i[], spolyvec_ptr r1i[], poly_ptr r0i[],
+    uint32_t dom, const lnp_quad_eval_params_t params, const unsigned int nbounds);
+static void __schwartz_zippel_accumulate_z (
+    spolymat_ptr R2i[], spolyvec_ptr r1i[], poly_ptr r0i[], 
     spolymat_ptr R2i2[], spolyvec_ptr r1i2[], poly_ptr r0i2[],
-    spolymat_ptr R2t, spolyvec_ptr r1t, poly_ptr r0t, polymat_t Ds,
-    polymat_t Dm, polyvec_t u, polymat_t oDs, polymat_t oDm, polyvec_t z4,
-    const uint8_t seed[32], uint32_t dom, const lnp_tbox_params_t params);
+    spolymat_ptr R2t, spolyvec_ptr r1t, poly_ptr r0t, 
+    polymat_t Ds, polymat_t Dm, intvec_t u_, polymat_t oDs, 
+    polymat_t oDm, polyvec_t z4, const uint8_t seed[32],
+    uint32_t dom, const lnp_quad_eval_params_t params,
+    const unsigned int nprime);
 
 static inline void
 __evaleq (poly_ptr res, spolymat_ptr Rprime2, spolyvec_ptr rprime1,
@@ -484,6 +486,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     const unsigned int m1 = abdlop->m1;
     const unsigned int l = abdlop->l;
     const unsigned int nbounds = 1; // TODO: number of u vectors we want to proof are small - will change to 1
+    const unsigned int nprime = ct0->nelems;
 
     printf("ajtai size: %d, bdlop size: %d, lext:%d, lambda:%d\n", m1, l, abdlop->lext, lambda);
     printf("quad-many l: %d, quad-many lext:%d\n", params->quad_many->l, params->quad_many->lext);
@@ -577,12 +580,26 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     INTVEC_T(ct1_coeffs_vec2, d * c0_m->nelems, Rq->q->nlimbs);
     intvec_ptr ct1_coeffs2 = &ct1_coeffs_vec2;
 
+    polymat_t Ds;
+    polymat_alloc (Ds, Rq, nprime*d, m1);
+    //INTMAT_T (Ds, 2047, 2047, Rq->q->nlimbs);
+    intvec_t rot_coeffvec;
+    poly_ptr Ds_elem;
+    printf("start u_v build\n");
+
     // rotating coeffs of ct1 and multiplying with u_s
     intvec_reverse(ct1_coeffs, ct1_coeffs);
     INT_T (new, 2 * Rq->q->nlimbs);
     for (i=0; i<ct1_coeffs2->nelems; i++) {
         intvec_lrot(ct1_coeffs2, ct1_coeffs, i+1);
         intvec_neg_self(ct1_coeffs2);
+
+        for (j=0; j<(ct1_coeffs2->nelems)/d; j++) {
+            intvec_get_subvec (rot_coeffvec, ct1_coeffs2, 0+j*d, d, 1); // XXX correct
+            Ds_elem = polymat_get_elem(Ds, i, j);
+            poly_set_coeffvec2(Ds_elem, rot_coeffvec);
+        }
+
         //printf("%lld ", intvec_get_elem_i64(ct1_coeffs2, i));
         intvec_dot(new, ct1_coeffs2, u_s);
 
@@ -1069,59 +1086,89 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
 
 
 
+    /* creating Ds, Dm, u .. */ 
+    // (now done inside sz accumulate function)
+    polymat_t Dm;
+    polymat_t oDs;
+    polymat_t oDm;
+
+    // if (Ds != NULL)
+    // {
+    //   polymat_alloc (oDs, Rq, nprime, m1);
+    //   polymat_auto (oDs, Ds);
+    // }
+    // if (short_l > 0 && Dm != NULL)
+    // {
+    //   polymat_alloc (oDm, Rq, nprime, l);
+    //   polymat_auto (oDm, Dm);
+    // }
+
+
 
     /* accumulate schwarz-zippel .. */
 
-    // __schwartz_zippel_accumulate_beta4 ( // what should be here instead of params?
-    //       R2prime_sz, r1prime_sz, r0prime_sz, R2prime_sz2, r1prime_sz2,
-    //       r0prime_sz2, R2t, r1t, r0t, hashp, 0, params);
+    printf("accumulating beta...\n");
+    __schwartz_zippel_accumulate_beta ( // what should be here instead of params?
+          R2prime_sz, r1prime_sz, r0prime_sz, R2prime_sz2, r1prime_sz2,
+          r0prime_sz2, R2t, r1t, r0t, hashp, 0, params, nprime);
 
-    // __schwartz_zippel_accumulate_z4 (R2prime_sz, r1prime_sz, r0prime_sz,
-    //                                  R2prime_sz2, r1prime_sz2, r0prime_sz2,
-    //                                  R2t, r1t, r0t, Ds, Dm, u, oDs, oDm, zv,
-    //                                  hash0, d - 1, params);
+    printf("accumulating z4...\n");
+    __schwartz_zippel_accumulate_z (R2prime_sz, r1prime_sz, r0prime_sz,
+                                     R2prime_sz2, r1prime_sz2, r0prime_sz2,
+                                     R2t, r1t, r0t, Ds, Dm, sum_tmp_vec, oDs, oDm, zv,
+                                     hash0, d - 1, params, nprime);
 
-    // for (i = 0; i < lambda / 2; i++) {
-    //   DEBUG_PRINTF (DEBUG_LEVEL >= 2, "schwarz-zippel merge accumulators %u",
-    //                 i);
-    //   __schwartz_zippel_auto (R2prime_sz[i], r1prime_sz[i], r0prime_sz[i],
-    //                           R2prime_sz2[i], r1prime_sz2[i], r0prime_sz2[i],
-    //                           params->quad_eval);
-    // }
+    printf("schwartz zippel auto...\n");
+    for (i = 0; i < lambda / 2; i++) {
+      DEBUG_PRINTF (DEBUG_LEVEL >= 2, "schwarz-zippel merge accumulators %u",
+                    i);
+      __schwartz_zippel_auto (R2prime_sz[i], r1prime_sz[i], r0prime_sz[i],
+                              R2prime_sz2[i], r1prime_sz2[i], r0prime_sz2[i],
+                              params);
+    }
 
 
+    POLY_T (tmp1, Rq);
+    printf("\nabdlop: m1 = %d, l = %d\n", abdlop->m1, abdlop->l);
     /* compute/output hi and set up quadeqs for lower level protocol */
-    // for (i = 0; i < lambda / 2; i++) {
-    //     polyvec_get_subvec (subv, s, 0, n_, 1);
+    for (i = 0; i < lambda / 2; i++) {
+        polyvec_get_subvec (subv, s, 0, n_, 1);
 
-    //     __evaleq (tmp, R2prime_sz[i], r1prime_sz[i], r0prime_sz[i], subv);
-    //     poly = polyvec_get_elem (h, i); /* gi */
-    //     poly_add (poly, poly, tmp, 0);  /* hi = gi + schwarz zippel */
+        __evaleq (tmp1, R2prime_sz[i], r1prime_sz[i], r0prime_sz[i], subv);
+        poly = polyvec_get_elem (h, i); /* gi */
+        poly_add (poly, poly, tmp1, 0);  /* hi = gi + schwarz zippel */
 
-    //     /* build quadeqs */
-    //     DEBUG_PRINTF (DEBUG_LEVEL >= 2, "set up quadeq %u", i);
+        /* build quadeqs */
+        DEBUG_PRINTF (DEBUG_LEVEL >= 2, "set up quadeq %u", i);
 
-    //     /* r0 */
-    //     poly_sub (r0prime_sz[i], r0prime_sz[i], poly, 0); /* r0i -= -hi */
+        /* r0 */
+        poly_sub (r0prime_sz[i], r0prime_sz[i], poly, 0); /* r0i -= -hi */
 
-    //     /* r1 */
-    //     r1prime_sz[i]->nelems_max = np;
-    //     poly = spolyvec_insert_elem (r1prime_sz[i],
-    //                                  2 * (quad_eval->m1 + quad_eval->l + i));
-    //     poly_set_one (poly);
-    //     r1prime_sz[i]->sorted = 1; /* above appends */
+        /* r1 */
+        r1prime_sz[i]->nelems_max = np2;
+        poly = spolyvec_insert_elem (r1prime_sz[i],
+                                     2 * (abdlop->m1 + abdlop->l + i));
+        poly_set_one (poly);
+        r1prime_sz[i]->sorted = 1; /* above appends */
 
-    //     /* R2 only grows by lambda/2 zero rows/cols */
-    //     R2prime_sz[i]->nrows = np2;
-    //     R2prime_sz[i]->ncols = np2;
-    //     R2prime_sz[i]->nelems_max = NELEMS_DIAG (np2);
-    // }
+        /* R2 only grows by lambda/2 zero rows/cols */
+        R2prime_sz[i]->nrows = np2;
+        R2prime_sz[i]->ncols = np2;
+        R2prime_sz[i]->nelems_max = NELEMS_DIAG (np2);
+    }
 
-
+    // printf("R2prime_sz[0].nelems = %d x %d, \n", R2prime_sz[0]->nrows, R2prime_sz[0]->ncols);
+    // printf("R2prime_sz[1].nelems = %d x %d, \n", R2prime_sz[1]->nrows, R2prime_sz[1]->ncols);
+    // printf("R2prime_sz[lambda/2].nelems = %d x %d, \n", R2prime_sz[lambda/2]->nrows, R2prime_sz[lambda/2]->ncols);
+    // printf("r1prime_sz[0].nelems = %d / %d, \n", r1prime_sz[0]->nelems, r1prime_sz[0]->nelems_max);
+    // printf("r1prime_sz[1].nelems = %d / %d, \n", r1prime_sz[1]->nelems, r1prime_sz[1]->nelems_max);
+    // printf("r1prime_sz[lambda/2].nelems = %d / %d, \n", r1prime_sz[lambda/2-1]->nelems, r1prime_sz[lambda/2-1]->nelems_max);
+    // printf("will call quad_many\n");
     // final thing to call -> double check last input and lambda/2 + 1
-    // lnp_quad_many_prove (hashp, tB, c, z1, z21, hint, s1, m, s2, tA2, A1, A2prime,
-    //                     Bprime, R2prime_sz, r1prime_sz, lambda / 2 + 1,
-    //                     seed_cont2, params->quad_many);
+    lnp_quad_many_prove (hashp, tB, c, z1, z21, hint, s1, m, s2, tA2, A1, A2prime,
+                        Bprime, R2prime_sz, r1prime_sz, lambda / 2 + 1,
+                        seed_cont2, params->quad_many);
+    printf("finished proof generation\n");
 
     /************************************************************************/
     /*                                                                      */
@@ -1620,6 +1667,8 @@ __schwartz_zippel_accumulate_ (spolymat_ptr R2i, spolyvec_ptr r1i,
   unsigned int j;
 
   DEBUG_PRINTF (DEBUG_PRINT_FUNCTION_ENTRY, "%s begin", __func__);
+  // printf("  -   - inside accumulate function\n");
+  // printf("  -   - m1=%d, l=%d, n=%d\n", m1, l, n);
 
   spolyvec_alloc (u0, Rq, n, n);
   spolyvec_alloc (u2, Rq, n, n);
@@ -1627,7 +1676,7 @@ __schwartz_zippel_accumulate_ (spolymat_ptr R2i, spolyvec_ptr r1i,
   spolymat_alloc (t2, Rq, n, n, (n * n - n) / 2 + n);
 
   /* R2i */
-
+  // printf("  -   - into R2i, M_alt = %d\n", M_alt);
   spolymat_set (t0, R2i);
   for (j = 0; j < M_alt; j++)
     {
@@ -1642,7 +1691,7 @@ __schwartz_zippel_accumulate_ (spolymat_ptr R2i, spolyvec_ptr r1i,
   spolymat_mod (R2i, t0);
 
   /* r1i */
-
+  // printf("  -   - into r1i\n");
   spolyvec_set (u0, r1i);
   for (j = 0; j < M_alt; j++)
     {
@@ -1656,6 +1705,7 @@ __schwartz_zippel_accumulate_ (spolymat_ptr R2i, spolyvec_ptr r1i,
     }
   spolyvec_mod (r1i, u0);
 
+  // printf("  -   - into r0i\n");
   if (r0i != NULL)
     {
       for (j = 0; j < M; j++)
@@ -1826,22 +1876,23 @@ __schwartz_zippel_accumulate2 (spolymat_ptr R2i[], spolyvec_ptr r1i[],
 
 
 static void
-__schwartz_zippel_accumulate_beta4 (spolymat_ptr R2i[], spolyvec_ptr r1i[],
+__schwartz_zippel_accumulate_beta (spolymat_ptr R2i[], spolyvec_ptr r1i[],
                                     poly_ptr r0i[], spolymat_ptr R2i2[],
                                     spolyvec_ptr r1i2[], poly_ptr r0i2[],
                                     UNUSED spolymat_ptr R2t, spolyvec_ptr r1t,
                                     UNUSED poly_ptr r0t,
                                     const uint8_t seed[32], uint32_t dom,
-                                    const lnp_tbox_params_t params)
+                                    const lnp_quad_eval_params_t params,
+                                    const unsigned int nprime)
 {
-  abdlop_params_srcptr tbox = params->tbox;
-  const unsigned int Z = params->Z;
-  polyring_srcptr Rq = params->tbox->ring;
+  abdlop_params_srcptr tbox = params->quad_eval;
+  const unsigned int Z = 0;
+  polyring_srcptr Rq = tbox->ring;
   const unsigned int d = polyring_get_deg (Rq);
   const unsigned int m1 = tbox->m1 - Z;
-  const unsigned int nex = params->nex;
+  const unsigned int nex = 0;
   const unsigned int l = tbox->l;
-  const unsigned int nprime = params->nprime;
+  //const unsigned int nprime = params->nprime;
   const unsigned int loff
       = (nprime > 0 ? 256 / d : 0) + (nex > 0 ? 256 / d : 0);
   const unsigned int ibeta = (m1 + Z + l + loff) * 2;
@@ -1891,41 +1942,44 @@ __schwartz_zippel_accumulate_beta4 (spolymat_ptr R2i[], spolyvec_ptr r1i[],
 
       __schwartz_zippel_accumulate2 (R2i, r1i, r0i, R2i2, r1i2, r0i2, R2tptr,
                                      r1tptr, r0tptr, 1, seed, dom + i,
-                                     params->quad_eval);
+                                     params);
     }
 }
 
 
 static void
-__schwartz_zippel_accumulate_z4 (spolymat_ptr R2i[], spolyvec_ptr r1i[],
+__schwartz_zippel_accumulate_z (spolymat_ptr R2i[], spolyvec_ptr r1i[],
                                  poly_ptr r0i[], spolymat_ptr R2i2[],
                                  spolyvec_ptr r1i2[], poly_ptr r0i2[],
                                  spolymat_ptr R2t, spolyvec_ptr r1t,
                                  poly_ptr r0t, polymat_t Ds, polymat_t Dm,
-                                 polyvec_t u, polymat_t oDs, polymat_t oDm,
+                                 intvec_t u_, polymat_t oDs, polymat_t oDm,
                                  polyvec_t z4, const uint8_t seed[32],
-                                 uint32_t dom, const lnp_tbox_params_t params)
+                                 uint32_t dom, const lnp_quad_eval_params_t params,
+                                 const unsigned int nprime)
 {
-  abdlop_params_srcptr tbox = params->tbox;
+  abdlop_params_srcptr tbox = params->quad_eval;
   polyring_srcptr Rq = tbox->ring;
   int_srcptr q = Rq->q;
   const unsigned int log2q = polyring_get_log2q (Rq);
   const unsigned int d = Rq->d;
-  const unsigned int Z = params->Z;
+  const unsigned int Z = 0;
   const unsigned int m1 = tbox->m1 - Z;
-  const unsigned int l = tbox->l;
-  const unsigned int nex = params->nex;
-  const unsigned int nprime = params->nprime;
+  //const unsigned int l = tbox->l;
+  const unsigned int l = 0;
+  const unsigned int nex = 0;
+  //const unsigned int nprime = params->nprime;
   const unsigned int loff3 = (nex > 0 ? 256 / d : 0);
   const unsigned int loff4 = (nprime > 0 ? 256 / d : 0);
   const unsigned int loff = loff3 + loff4;
+  printf("  - loff=%d\n", loff);
   const unsigned int ibeta = (m1 + Z + l + loff) * 2; // XXX correct
   const unsigned int is1 = 0;
   const unsigned int im = (m1 + Z) * 2;
   const unsigned int iy4 = (m1 + Z + l + loff3) * 2; // XXX correct
   unsigned int i, j, k;
   int8_t Rprimei[nprime * d];
-  const unsigned int lambda = params->quad_eval->lambda;
+  const unsigned int lambda = params->lambda;
   spolymat_ptr R2tptr[1];
   spolyvec_ptr r1tptr[1];
   poly_ptr r0tptr[1];
@@ -1938,7 +1992,7 @@ __schwartz_zippel_accumulate_z4 (spolymat_ptr R2i[], spolyvec_ptr r1i[],
   intvec_t row1;
 
   INT_T (tmp, 2 * Rq->q->nlimbs);
-  INTVEC_T (u_, nprime * d, Rq->q->nlimbs);
+  //INTVEC_T (u_, nprime * d, Rq->q->nlimbs);
   INTVEC_T (z4_, 256, Rq->q->nlimbs);
   INTMAT_T (V, lambda, 256, Rq->q->nlimbs);
   INTMAT_T (vR_, lambda, nprime * d, Rq->q->nlimbs);
@@ -1968,7 +2022,11 @@ __schwartz_zippel_accumulate_z4 (spolymat_ptr R2i[], spolyvec_ptr r1i[],
 
   // compute vR=v*Rprime
   // then vR*Ds, vR*Dm, vR*u
+  printf("  - m1=%d, l=%d\n", m1, l);
 
+  printf("start accumulating z_v\n");
+
+  printf("  - building z4_\n");
   // instantiates z4_ intvec of coefficients of z4
   for (i = 0; i < loff4; i++)
     {
@@ -1983,9 +2041,10 @@ __schwartz_zippel_accumulate_z4 (spolymat_ptr R2i[], spolyvec_ptr r1i[],
 
   intmat_set_zero (vR);
   // vR is lambda * nprime*d matrix where challenge k out of lambda multiplies line k of matrix R
+  printf("  - building vR\n");
   for (i = 0; i < 256; i++)
     {
-      _expand_Rprime_i (Rprimei, nprime * d, i, seed);
+      _expand_R_i2 (Rprimei, nprime * d, i, seed);
 
       for (k = 0; k < lambda; k++)
         {
@@ -2020,21 +2079,21 @@ __schwartz_zippel_accumulate_z4 (spolymat_ptr R2i[], spolyvec_ptr r1i[],
 
   // generates u_, intvec with coefficients of elements in u.
   // vRu is intvec of lambda entries, vRu = vR_ * u_
-  if (u != NULL)
-    {
-      for (k = 0; k < nprime; k++)
-        {
-          intvec_get_subvec (row1, u_, d * k, d, 1);
-          poly = polyvec_get_elem (u, k);
-          intvec_set (row1, poly_get_coeffvec (poly));
-        }
-      for (k = 0; k < lambda; k++)
-        {
-          intmat_get_row (row1, vR_, k);
-          coeff1 = intvec_get_elem (vRu, k); // XXX correct
-          intvec_dot (coeff1, row1, u_);
-        }
-    }
+  // if (u != NULL)
+  //   {
+  //     for (k = 0; k < nprime; k++)
+  //       {
+  //         intvec_get_subvec (row1, u_, d * k, d, 1);
+  //         poly = polyvec_get_elem (u, k);
+  //         intvec_set (row1, poly_get_coeffvec (poly));
+  //       }
+  //     for (k = 0; k < lambda; k++)
+  //       {
+  //         intmat_get_row (row1, vR_, k);
+  //         coeff1 = intvec_get_elem (vRu, k); // XXX correct
+  //         intvec_dot (coeff1, row1, u_);
+  //       }
+  //   }
 #if 0
   int32_t RPRIME[nprime * d * 256];
   INTMAT_T (Rprime, 256, nprime * d, 1);
@@ -2050,59 +2109,110 @@ __schwartz_zippel_accumulate_z4 (spolymat_ptr R2i[], spolyvec_ptr r1i[],
   //intmat_dump (vR);
 #endif
 
-  // vRpol is polymat lambda * nprime
-  // consists of the ring elements obtained from the coefficients in vR_
-  for (k = 0; k < lambda; k++)
-    {
-      for (i = 0; i < nprime; i++)
-        {
-          poly = polymat_get_elem (vRpol, k, i);
-          for (j = 0; j < d; j++)
-            {
-              coeff1 = intmat_get_elem (vR_, k, i * d + j);
-              coeff2 = poly_get_coeff (poly, j);
+  // building vRDs and vRDm 
+  // consists of the ring elements from multiplying the integers in vR_ and Ds/Dm
+  printf("  - building vRDs\n");
+  if (Ds != NULL) {
+    for (k = 0; k < lambda; k++) {
+        intmat_get_row(row1, vR_, k);
 
-              int_set (coeff2, coeff1);
+        for (i = 0; i < Ds->ncols; i++) {
+            poly = polymat_get_elem (vRDs, k, i);
+            poly_set_zero(poly);
+
+            for (j = 0; j < Ds->nrows; j++) {
+              poly2 = polymat_get_elem (Ds, j, i);
+              coeff1 = intmat_get_elem(vR_, k, j);
+              poly_addscale(poly, coeff1, poly2, 0);
             }
         }
     }
+    printf("  - computing o(vRDs)\n");
+    polymat_auto (vRDs, vRDs);
+    polymat_lrot (vRDs, vRDs, d / 2); // * X^(d/2)  XXX correct
+  }
+
+  printf("  - building vRDm\n");
+  if (l > 0 && Dm != NULL) {
+    for (k = 0; k < lambda; k++) {
+        intmat_get_row(row1, vR_, k);
+
+        for (i = 0; i < Dm->ncols; i++) {
+            poly = polymat_get_elem (vRDm, k, i);
+            poly_set_zero(poly);
+
+            for (j = 0; j < Dm->nrows; j++) {
+              poly2 = polymat_get_elem (Dm, j, i);
+              coeff1 = intmat_get_elem(vR_, k, j);
+              poly_addscale(poly, coeff1, poly2, 0);
+            }
+        }
+    }
+    printf("  - computing o(vRDm)\n");
+    polymat_auto (vRDm, vRDm);
+    polymat_lrot (vRDm, vRDm, d / 2); // * X^(d/2)  XXX correct
+  }
+
+  // #region previous vRD version (using oDs, oDm)
+  // vRpol is polymat lambda * nprime
+  // consists of the ring elements obtained from the coefficients in vR_
+  // printf("  - building vRpol_\n");
+  // for (k = 0; k < lambda; k++)
+  //   {
+  //     for (i = 0; i < nprime; i++)
+  //       {
+  //         poly = polymat_get_elem (vRpol, k, i);
+  //         for (j = 0; j < d; j++)
+  //           {
+  //             coeff1 = intmat_get_elem (vR_, k, i * d + j);
+  //             coeff2 = poly_get_coeff (poly, j);
+
+  //             int_set (coeff2, coeff1);
+  //           }
+  //       }
+  //   }
 
   // vRDs is lambda * m1 polymat
   // each row is the dot product of a row of vRpol with oDs
   // at the end, the whole matrix is multiplied by X^(d/2)
-  if (Ds != NULL)
-    {
-      // XXXpolymat_get_submat (subm, mat, 0, 0, nprime, m1, 1, 1);
-      // XXXpolymat_auto (subm, Ds);
+  // printf("  - building vRDs_\n");
+  // if (Ds != NULL)
+  //   {
+  //     // XXXpolymat_get_submat (subm, mat, 0, 0, nprime, m1, 1, 1);
+  //     // XXXpolymat_auto (subm, Ds);
 
-      for (k = 0; k < lambda; k++)
-        {
-          polymat_get_row (subv1, vRpol, k);
-          polymat_get_row (subv2, vRDs, k); // correct
+  //     for (k = 0; k < lambda; k++)
+  //       {
+  //         polymat_get_row (subv1, vRpol, k);
+  //         polymat_get_row (subv2, vRDs, k); // correct
 
-          polyvec_mul2 (subv2, subv1, oDs);
-        }
+  //         polyvec_mul2 (subv2, subv1, oDs);
+  //       }
 
-      polymat_lrot (vRDs, vRDs, d / 2); // * X^(d/2)  XXX correct
-    }
+  //     polymat_lrot (vRDs, vRDs, d / 2); // * X^(d/2)  XXX correct
+  //   }
 
   // same as vRDs but with Dm
-  if (l > 0 && Dm != NULL)
-    {
-      // XXXpolymat_get_submat (subm, mat, 0, 0, nprime, l, 1, 1);
-      // XXXpolymat_auto (subm, Dm);
+  // printf("  - building vRDm_\n");
+  // if (l > 0 && Dm != NULL)
+  //   {
+  //     // XXXpolymat_get_submat (subm, mat, 0, 0, nprime, l, 1, 1);
+  //     // XXXpolymat_auto (subm, Dm);
 
-      for (k = 0; k < lambda; k++)
-        {
-          polymat_get_row (subv1, vRpol, k);
-          polymat_get_row (subv2, vRDm, k); // correct
+  //     for (k = 0; k < lambda; k++)
+  //       {
+  //         polymat_get_row (subv1, vRpol, k);
+  //         polymat_get_row (subv2, vRDm, k); // correct
 
-          polyvec_mul2 (subv2, subv1, oDm);
-        }
+  //         polyvec_mul2 (subv2, subv1, oDm);
+  //       }
 
-      polymat_lrot (vRDm, vRDm, d / 2); // * X^(d/2)  XXX correct
-    }
+  //     polymat_lrot (vRDm, vRDm, d / 2); // * X^(d/2)  XXX correct
+  //   }
+  // #endregion
 
+
+  // use previously built matrices to compute R2t, r1t and r0t
   for (k = 0; k < lambda; k++)
     {
 
@@ -2161,7 +2271,7 @@ __schwartz_zippel_accumulate_z4 (spolymat_ptr R2i[], spolyvec_ptr r1i[],
 
       // set ibeta  coefficient d/2 to be -1/2 * vRu
       // set ibeta+1 coefficient d/2 to be 1/2 * vRu 
-      if (u != NULL)
+      if (u_ != NULL)
         {
           poly = spolyvec_insert_elem (r1t, ibeta);
           poly2 = spolyvec_insert_elem (r1t, ibeta + 1);
@@ -2193,14 +2303,15 @@ __schwartz_zippel_accumulate_z4 (spolymat_ptr R2i[], spolyvec_ptr r1i[],
       int_neg_self (coeff1);
       int_redc (coeff1, coeff1, q);
 
+      printf("  - calling accumulate functions\n");
       if (k % 2 == 0)
         __schwartz_zippel_accumulate_ (R2i[k / 2], r1i[k / 2], r0i[k / 2],
                                        R2tptr, r1tptr, r0tptr, 1,
-                                       params->quad_eval);
+                                       params);
       else
         __schwartz_zippel_accumulate_ (R2i2[k / 2], r1i2[k / 2], r0i2[k / 2],
                                        R2tptr, r1tptr, r0tptr, 1,
-                                       params->quad_eval);
+                                       params);
     }
 
   polymat_free (vRDs);
