@@ -3,7 +3,8 @@
 #include "../src/brandom.h"
 #include "../src/memory.h"
 // #include "brandom.h"
-#include "vdec_params_tbox.h"
+// #include "vdec_params_tbox.h"
+#include "vdec_params.h"
 //#include "lnp-quad-eval-params1.h"
 #include "vdec_ct_newq.h"
 #include <mpfr.h>
