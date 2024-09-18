@@ -1892,7 +1892,8 @@ __schwartz_zippel_accumulate_beta (spolymat_ptr R2i[], spolyvec_ptr r1i[],
   const unsigned int d = polyring_get_deg (Rq);
   const unsigned int m1 = tbox->m1 - Z;
   const unsigned int nex = 0;
-  const unsigned int l = tbox->l;
+  //const unsigned int l = tbox->l;
+  const unsigned int l = 0;
   //const unsigned int nprime = params->nprime;
   const unsigned int loff
       = (nprime > 0 ? 256 / d : 0) + (nex > 0 ? 256 / d : 0);
@@ -1903,6 +1904,16 @@ __schwartz_zippel_accumulate_beta (spolymat_ptr R2i[], spolyvec_ptr r1i[],
   spolymat_ptr R2tptr[1];
   spolyvec_ptr r1tptr[1];
   poly_ptr r0tptr[1];
+
+  // printf("checking r1i[0] spolyvec inside acc beta 1. nelems_max = %d\n", r1i[0]->nelems_max);
+  // unsigned int elem, j;
+  // _SVEC_FOREACH_ELEM (r1i[0], j)
+  // {
+  //   elem = spolyvec_get_elem_ (r1i[0], j);
+  //   if (elem >= r1i[0]->nelems_max)
+  //     printf("current elem is %d / %d\n", elem, r1i[0]->nelems_max);
+  // }
+  // printf("ibeta is %d, loff is %d, l is %d, m1 is %d\n", ibeta, loff, l, m1);
 
   // d-1 eval eqs in beta,o(beta), for i=1,...,d-1:
   // prove const coeff of X^i * beta4 = 0 -> -i2*x^i*x^(d/2)*beta +
