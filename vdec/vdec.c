@@ -477,7 +477,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
 
     // copied from lnp-tbox-params1.h
     //static const limb_t params1_scM4_limbs[] = {1655797669362676316UL, 318580927907168899UL, 1UL};
-    static const int_t scM4 = {{(limb_t *)params1_scM4_limbs, 3, 0}};
+    // static const int_t scM4 = {{(limb_t *)params1_scM4_limbs, 3, 0}};
     static const limb_t params1_stdev4sq_limbs[] = {157450UL, 0UL};
     static const int_t stdev4sqr = {{(limb_t *)params1_stdev4sq_limbs, 2, 0}};
     //const int_srcptr scM4;         /* scaled M4: round(M4 * 2^128) */
@@ -847,7 +847,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
         /* rejection sampling */
 
         intvec_mul_sgn_self (yv_coeffs, beta_v); /* revert mul by beta3 */
-        rej = rej_bimodal (rstate_rej, zv_coeffs, yv_coeffs, scM4, stdev4sqr);
+        rej = rej_bimodal (rstate_rej, zv_coeffs, yv_coeffs, params1_scM4, stdev4sqr);
         if (rej) {
             DEBUG_PRINTF (DEBUG_PRINT_REJ, "%s", "reject u_v");
             continue;
