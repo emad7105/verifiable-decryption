@@ -15,3 +15,4 @@ l = 5                                           # length of unbounded message m
 
 # gamma1 = 10
 # gamma2 = 10
+# gamma4 = 5

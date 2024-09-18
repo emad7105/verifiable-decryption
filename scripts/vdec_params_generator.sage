@@ -2,6 +2,10 @@ import mpmath as mp
 from mpmath import mpf, nstr
 import sys
 
+# Emad
+Bprime = 4                  # set linf norm bound; this is needed by alpha4; alpha4 is needed by gamma4
+
+
 # cannot print more than 822
 mp.mp.prec = 512
 prec = 8  # precision for nstr
@@ -68,6 +72,7 @@ assert rejs1 == 1
 assert rejs2 == 1  # XXX add bimodal option
 gamma1= mpf(gamma1)
 gamma2= mpf(gamma2)
+gamma4 = mpf(gamma4)
 
 # X^d + 1 mod q1,q2 must split into L=2 irreductible factors.
 # q1, q2 odd primes, q1, q2 = 2L+1 mod 4L, q1 < q2
@@ -85,6 +90,15 @@ if 'log2q1' in globals():
     n_div = 2
 else:
     log2q1 = log2q
+
+alpha4 = 1
+#if nprime > 0 and Bprime > 0:
+approx_proof = 1
+Bprime = mpf(Bprime)
+alpha4 = Bprime
+#elif nprime != 0 or Bprime != 0:  # either both > 0, or both == 0
+#    err("Invalid approximate proof params")
+
 
 # number of repetitions for boosting soundness, we assume lambda is even
 lmbda = 2 * ceil(KAPPA/(2*log2q1))
@@ -115,9 +129,15 @@ omega_bits = ceil(log(2*omega+1, 2))
 stdev1 = gamma1 * mpf(eta) * alpha
 stdev2 = mpf(0)  # set later (depends on length of randomness s2)
 
+# standard deviations for bimodal rejection sampling
+stdev4 = gamma4 * mp.sqrt(337) * alpha4
+
 # XXX
 stdev1 = round_stdev(stdev1)
 gamma1 = stdev1 / (mpf(eta) * alpha)
+
+stdev4 = round_stdev(stdev4)
+gamma4 = stdev4 / (mp.sqrt(337) * alpha4)
 # XXX
 
 if gamma1 <= 0:
@@ -309,6 +329,7 @@ printv(f"")
 printv(f"Repetition rate")
 printv(f"M1 = {nstr(M1,prec)}")
 printv(f"M2 = {nstr(M2,prec)}")
+printv(f"M4 = {nstr(M4,prec)}")
 printv(f"total = {nstr(rate, prec)}")
 printv(f"")
 printv(f"Security")
