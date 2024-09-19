@@ -6,7 +6,8 @@
 // #include "vdec_params_tbox.h"
 #include "vdec_params.h"
 //#include "lnp-quad-eval-params1.h"
-#include "vdec_ct_newq.h"
+// #include "vdec_ct_newq.h"
+#include "vdec_ct.h"
 #include <mpfr.h>
 
 #define N 1 /* number of quadratic equations */
@@ -446,7 +447,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     memset (hashv, 0xff, 32);
 
     printf("verifying quad eval\n");
-     b = lnp_quad_eval_verify (hashv, h, c, z1, z21, hint, tA1, tB, A1, A2prime,
+    b = lnp_quad_eval_verify (hashv, h, c, z1, z21, hint, tA1, tB, A1, A2prime,
                                Bprime, R2, r1, r0, N, Rprime2, rprime1, rprime0,
                                M, params);
 
@@ -457,13 +458,31 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     
     // #endregion
 
+
+    int b1 = 1, b2 = 1;
+    for (i = 0; i < lambda / 2; i++)
+    {
+      poly = polyvec_get_elem (h, i);
+      coeff = poly_get_coeff (poly, 0);
+      if (int_eqzero (coeff) != 1) {
+        b1 = 0;
+        printf("coeff 0 is %lld\n", coeff);
+      }
+      coeff = poly_get_coeff (poly, Rq->d / 2);
+      if (int_eqzero (coeff) != 1) {
+        b2 = 0;
+        printf("coeff d/2 is %lld\n", coeff);
+      }
+    }
+    printf("--> h coeff verification result: %d, %d\n", b1, b2);
+
     /************************************************************************/
     /*                                                                      */
     /*    OUR CUSTOM PROOF: committing to witness + computing u vectors     */
     /*                                                                      */
     /************************************************************************/
-    //polyvec_t h_our;
-    //polyvec_alloc (h_our, Rq, params->lambda / 2);
+    polyvec_t h_our;
+    polyvec_alloc (h_our, Rq, params->lambda / 2);
 
 
     // #region Committing to witness
@@ -629,11 +648,10 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
 
     // adding other parts of u_v
     intvec_add(u_v, rot_s, sum_tmp); 
-    //printf("\n\n");
-    // for (i=0; i<u_l->nelems-1; i++)
-    //     printf("(%d, %d) ", intvec_get_elem_i64(u_l, i), intvec_get_elem(u_l, i)->nlimbs);
+    // printf("\n\n");
+    // for (i=0; i<u_v->nelems; i++)
+    //     printf("%d ", intvec_get_elem_i64(u_v, i));
     // printf("\n");
-    //printf("u_l[0] = %lld, nlimbs = %d\n", intvec_get_elem_i64(u_l, i), intvec_get_elem(u_l, i)->nlimbs);
 
     printf("finished u_v build\n");
 
@@ -815,6 +833,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
         polyvec_set (zv_, yv);
         intvec_set_zero (yv_coeffs);
 
+
         for (i = 0; i < 256; i++)
         {
             R_uv_coeff = intvec_get_elem (yv_coeffs, i);
@@ -852,7 +871,6 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
         intvec_add (zv_coeffs, zv_coeffs, yv_coeffs);
         printf("created z_v\n");
 
-
         /* rejection sampling */
 
         intvec_mul_sgn_self (yv_coeffs, beta_v); /* revert mul by beta3 */
@@ -868,6 +886,8 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     }
 
     // #endregion
+
+
 
 
 
@@ -943,7 +963,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     /* generate uniformly random h=g with coeffs 0 and d/2 == 0 */
     for (i = 0; i < lambda / 2; i++)
     {
-        poly = polyvec_get_elem (h, i);
+        poly = polyvec_get_elem (h_our, i);
         coeffs = poly_get_coeffvec (poly);
 
         intvec_urandom (coeffs, Rq->q, log2q, seed_cont, i);
@@ -951,14 +971,30 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
         intvec_set_elem_i64 (coeffs, d / 2, 0);
     }
 
+    // DEBUGGING
+    printf("checking h_our after instantiation with random gi\n"); 
+    for (i = 0; i < lambda / 2; i++)
+    {
+      poly = polyvec_get_elem (h_our, i);
+      coeff = poly_get_coeff (poly, 0);
+      if (int_eqzero (coeff) != 1) {
+        b1 = 0;
+        printf("coeff 0 is %lld\n", coeff);
+      }
+      coeff = poly_get_coeff (poly, d / 2);
+      if (int_eqzero (coeff) != 1) {
+        b2 = 0;
+        printf("coeff d/2 is %lld\n", coeff);
+      }
+    }
 
     printf("append g to bdlop part and commit\n");
     /* append g to message m */
     polyvec_get_subvec (subv, m, l, lambda / 2, 1);
-    polyvec_set (subv, h);
+    polyvec_set (subv, h_our);
 
     /* tg = Bexptprime*s2 + g */
-    polyvec_set (tg, h);
+    polyvec_set (tg, h_our);
     polyvec_get_subvec (s2_, s2, 0, abdlop->m2 - abdlop->kmsis, 1);
     polyvec_addmul (tg, Bextprime, s2_, 0);
 
@@ -1138,6 +1174,23 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
                               params);
     }
 
+    // DEBUGGING
+    b1 = 1; b2 = 1;
+    printf("checking h_our before computing hi");
+    for (i = 0; i < lambda / 2; i++)
+    {
+      poly = polyvec_get_elem (h_our, i);
+      coeff = poly_get_coeff (poly, 0);
+      if (int_eqzero (coeff) != 1) {
+        b1 = 0;
+        printf("coeff 0 is %lld\n", coeff);
+      }
+      coeff = poly_get_coeff (poly, d / 2);
+      if (int_eqzero (coeff) != 1) {
+        b2 = 0;
+        printf("coeff d/2 is %lld\n", coeff);
+      }
+    }
 
     POLY_T (tmp1, Rq);
     printf("\nabdlop: m1 = %d, l = %d\n", abdlop->m1, abdlop->l);
@@ -1146,7 +1199,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
         polyvec_get_subvec (subv, s, 0, n_, 1);
 
         __evaleq (tmp1, R2prime_sz[i], r1prime_sz[i], r0prime_sz[i], subv);
-        poly = polyvec_get_elem (h, i); /* gi */
+        poly = polyvec_get_elem (h_our, i); /* gi */
         poly_add (poly, poly, tmp1, 0);  /* hi = gi + schwarz zippel */
 
         /* build quadeqs */
@@ -1184,13 +1237,16 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     INT_T (linf, int_get_nlimbs (Rq->q));
     polyvec_fromcrt (zv);
     polyvec_linf (linf, zv);
-    b = (int_lt (linf, params->Bz4));
+    b = (int_le (linf, params->Bz4));
+    // int_dump(linf);
+    // int_dump(params->Bz4);
     printf("--> zv bound verification result: %d\n", b);
 
-    int b1 = 1, b2 = 1;
+    // int b1 = 1, b2 = 1;
+    b1 = 1; b2 = 1;
     for (i = 0; i < lambda / 2; i++)
     {
-      poly = polyvec_get_elem (h, i);
+      poly = polyvec_get_elem (h_our, i);
       coeff = poly_get_coeff (poly, 0);
       if (int_eqzero (coeff) != 1) {
         b1 = 0;
@@ -1202,7 +1258,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
         printf("coeff d/2 is %lld\n", coeff);
       }
     }
-    printf("--> h coeff verification result: %d, %d\n", b1, b2);
+    printf("--> h_our coeff verification result: %d, %d\n", b1, b2);
 
     /* expect successful verification */
     //memset (hashv, 0xff, 32);
@@ -2088,6 +2144,7 @@ __schwartz_zippel_accumulate_z (spolymat_ptr R2i[], spolyvec_ptr r1i[],
           int_set (coeff2, coeff1);
         }
     }
+  printf("\n");
 
   intmat_set_zero (vR);
   // vR is lambda * nprime*d matrix where challenge k out of lambda multiplies line k of matrix R
@@ -2135,21 +2192,22 @@ __schwartz_zippel_accumulate_z (spolymat_ptr R2i[], spolyvec_ptr r1i[],
 
   // generates u_, intvec with coefficients of elements in u.
   // vRu is intvec of lambda entries, vRu = vR_ * u_
-  // if (u != NULL)
-  //   {
-  //     for (k = 0; k < nprime; k++)
-  //       {
-  //         intvec_get_subvec (row1, u_, d * k, d, 1);
-  //         poly = polyvec_get_elem (u, k);
-  //         intvec_set (row1, poly_get_coeffvec (poly));
-  //       }
-  //     for (k = 0; k < lambda; k++)
-  //       {
-  //         intmat_get_row (row1, vR_, k);
-  //         coeff1 = intvec_get_elem (vRu, k); // XXX correct
-  //         intvec_dot (coeff1, row1, u_);
-  //       }
-  //   }
+  if (u_ != NULL)
+    {
+      //printf("  -  -  u_ is not NULL\n");
+      // for (k = 0; k < nprime; k++)
+      //   {
+      //     intvec_get_subvec (row1, u_, d * k, d, 1);
+      //     poly = polyvec_get_elem (u, k);
+      //     intvec_set (row1, poly_get_coeffvec (poly));
+      //   }
+      for (k = 0; k < lambda; k++)
+        {
+          intmat_get_row (row1, vR_, k);
+          coeff1 = intvec_get_elem (vRu, k); // XXX correct
+          intvec_dot (coeff1, row1, u_);
+        }
+    }
 #if 0
   int32_t RPRIME[nprime * d * 256];
   INTMAT_T (Rprime, 256, nprime * d, 1);
