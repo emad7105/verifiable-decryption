@@ -564,6 +564,7 @@ typedef struct
   // for vdec
   const int_srcptr inv4;
   // for vdec
+  const unsigned int log2stdev4; /* stdev4 = 1.55 * 2^log2stdev2 */
   const int_srcptr scM4;         /* scaled M4: round(M4 * 2^128) */
   // for vdec
   const int_srcptr stdev4sq;

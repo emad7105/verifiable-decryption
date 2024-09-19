@@ -349,6 +349,7 @@ printv(f"")
 
 log2stdev1 = int(mp.log(stdev1/mpf(1.55), 2))
 log2stdev2 = int(mp.log(stdev2/mpf(1.55), 2))
+log2stdev4 = int(mp.log(stdev4/mpf(1.55), 2))
 
 q_nlimbs = int2limbs(q, -1)[1]
 if m % 2 == 0:
@@ -388,7 +389,7 @@ static const polyring_t {name}_ring = {{{{{name}_q, {d}, {ceil(log(q-1,2))}, {lo
 static const dcompress_params_t {name}_dcomp = {{{{ {name}_q, {name}_qminus1, {name}_m, {name}_mby2, {name}_gamma, {name}_gammaby2, {name}_pow2D, {name}_pow2Dby2, {D}, {m % 2}, {ceil(log(m,2))} }}}};
 static const abdlop_params_t {name}_quad_eval = {{{{ {name}_ring, {name}_dcomp, {m1}, {m2}, {l}, {lext}, {kmsis}, {name}_Bsq, {nu}, {omega}, {omega_bits}, {eta}, {rejs1}, {log2stdev1}, {name}_scM1, {name}_stdev1sq, {rejs2}, {log2stdev2}, {name}_scM2, {name}_stdev2sq}}}};
 static const abdlop_params_t {name}_quad_many = {{{{ {name}_ring, {name}_dcomp, {m1}, {m2}, {l+lmbda/2}, {1}, {kmsis}, {name}_Bsq, {nu}, {omega}, {omega_bits}, {eta}, {rejs1}, {log2stdev1}, {name}_scM1, {name}_stdev1sq, {rejs2}, {log2stdev2}, {name}_scM2, {name}_stdev2sq}}}};
-static const lnp_quad_eval_params_t {name} = {{{{ {name}_quad_eval, {name}_quad_many, {lmbda}, {name}_inv4, {name}_scM4, {name}_stdev4sq, {name}_Bz4}}}};
+static const lnp_quad_eval_params_t {name} = {{{{ {name}_quad_eval, {name}_quad_many, {lmbda}, {name}_inv4, {log2stdev4}, {name}_scM4, {name}_stdev4sq, {name}_Bz4}}}};
 """
 
 printc(out)
