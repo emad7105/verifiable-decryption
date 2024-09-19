@@ -462,6 +462,9 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     /*    OUR CUSTOM PROOF: committing to witness + computing u vectors     */
     /*                                                                      */
     /************************************************************************/
+    //polyvec_t h_our;
+    //polyvec_alloc (h_our, Rq, params->lambda / 2);
+
 
     // #region Committing to witness
 
@@ -819,7 +822,13 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
             // should I use this or _expand_Rprime_i?
 
             //printf("Expanding...\n");
-            //_expand_R_i2 (Ri_v, u_v->nelems, i, cseed);
+            _expand_R_i2 (Ri_v, u_v->nelems, i, cseed);
+            // if (i == 250) {
+            //   printf(" - - Ri 1:  ");
+            //   for (j = 0; j < u_v->nelems; j++)
+            //     printf("%d", Ri_v[j]);
+            //   printf("\n");
+            // }
             //printf("Expanded\n");
 
             for (j = 0; j < u_v->nelems; j++)
@@ -1107,6 +1116,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
 
 
     /* accumulate schwarz-zippel .. */
+    // #region sz accumulate
 
     printf("accumulating beta...\n");
     __schwartz_zippel_accumulate_beta ( // what should be here instead of params?
@@ -1157,15 +1167,9 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
         R2prime_sz[i]->ncols = np2;
         R2prime_sz[i]->nelems_max = NELEMS_DIAG (np2);
     }
+  // # endregion
 
-    // printf("R2prime_sz[0].nelems = %d x %d, \n", R2prime_sz[0]->nrows, R2prime_sz[0]->ncols);
-    // printf("R2prime_sz[1].nelems = %d x %d, \n", R2prime_sz[1]->nrows, R2prime_sz[1]->ncols);
-    // printf("R2prime_sz[lambda/2].nelems = %d x %d, \n", R2prime_sz[lambda/2]->nrows, R2prime_sz[lambda/2]->ncols);
-    // printf("r1prime_sz[0].nelems = %d / %d, \n", r1prime_sz[0]->nelems, r1prime_sz[0]->nelems_max);
-    // printf("r1prime_sz[1].nelems = %d / %d, \n", r1prime_sz[1]->nelems, r1prime_sz[1]->nelems_max);
-    // printf("r1prime_sz[lambda/2].nelems = %d / %d, \n", r1prime_sz[lambda/2-1]->nelems, r1prime_sz[lambda/2-1]->nelems_max);
-    // printf("will call quad_many\n");
-    // final thing to call -> double check last input and lambda/2 + 1
+
     lnp_quad_many_prove (hashp, tB, c, z1, z21, hint, s1, m, s2, tA2, A1, A2prime,
                         Bprime, R2prime_sz, r1prime_sz, lambda / 2 + 1,
                         seed_cont2, params->quad_many);
@@ -1173,15 +1177,49 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
 
     /************************************************************************/
     /*                                                                      */
-    /*                        END OF OUR CUSTOM PROOF                       */
+    /*                            OUR VERIFICATION                          */
     /*                                                                      */
     /************************************************************************/
 
+    INT_T (linf, int_get_nlimbs (Rq->q));
+    polyvec_fromcrt (zv);
+    polyvec_linf (linf, zv);
+    b = (int_lt (linf, params->Bz4));
+    printf("--> zv bound verification result: %d\n", b);
 
+    int b1 = 1, b2 = 1;
+    for (i = 0; i < lambda / 2; i++)
+    {
+      poly = polyvec_get_elem (h, i);
+      coeff = poly_get_coeff (poly, 0);
+      if (int_eqzero (coeff) != 1) {
+        b1 = 0;
+        printf("coeff 0 is %lld\n", coeff);
+      }
+      coeff = poly_get_coeff (poly, d / 2);
+      if (int_eqzero (coeff) != 1) {
+        b2 = 0;
+        printf("coeff d/2 is %lld\n", coeff);
+      }
+    }
+    printf("--> h coeff verification result: %d, %d\n", b1, b2);
 
+    /* expect successful verification */
+    //memset (hashv, 0xff, 32);
+    memcpy(hashv, hashp, 32);
 
+    printf("verifying our quad_many proof\n");
+    b = lnp_quad_many_verify (hashv, c, z1, z21, hint, tA1, tB, A1, A2prime,
+                              Bprime, R2prime_sz, r1prime_sz, r0prime_sz,
+                              lambda / 2 + 1, params->quad_many);
 
+    printf("--> quad_many verification result: %d\n", b);
 
+    /************************************************************************/
+    /*                                                                      */
+    /*                        END OF OUR CUSTOM PROOF                       */
+    /*                                                                      */
+    /************************************************************************/
 
     /* generate public parameters */
     abdlop_keygen (A1, A2prime, Bprime, seed, abdlop);
@@ -1190,7 +1228,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     memset (hashp, 0xff, 32);
     abdlop_commit (tA1, tA2, tB, s1, m, s2, A1, A2prime, Bprime, abdlop);
 
-    printf("proving quad eval\n");
+    printf("\nproving quad eval\n");
     lnp_quad_eval_prove (hashp, tB, h, c, z1, z21, hint, s1, m, s2, tA2, A1,
                         A2prime, Bprime, R2, r1, N, Rprime2, rprime1, rprime0,
                         M, seed, params);
@@ -2057,6 +2095,12 @@ __schwartz_zippel_accumulate_z (spolymat_ptr R2i[], spolyvec_ptr r1i[],
   for (i = 0; i < 256; i++)
     {
       _expand_R_i2 (Rprimei, nprime * d, i, seed);
+      // if (i == 250) {
+      //         printf(" - - Ri 1:  ");
+      //         for (j = 0; j < nprime*d; j++)
+      //           printf("%d", Rprimei[j]);
+      //         printf("\n");
+      //       }
 
       for (k = 0; k < lambda; k++)
         {

@@ -567,6 +567,8 @@ typedef struct
   const int_srcptr scM4;         /* scaled M4: round(M4 * 2^128) */
   // for vdec
   const int_srcptr stdev4sq;
+  // for vdec
+  const int_srcptr Bz4;
 } lnp_quad_eval_params_struct;
 typedef lnp_quad_eval_params_struct lnp_quad_eval_params_t[1];
 typedef lnp_quad_eval_params_struct *lnp_quad_eval_params_ptr;
