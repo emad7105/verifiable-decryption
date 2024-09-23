@@ -12,7 +12,7 @@ from math import sqrt
 vname = "param"               # variable name
 
 deg   = 2048                  # ring Rp degree d
-mod   = 9223372036854776261                 # CT modulus
+mod   = 1099511629429                 # CT modulus
 mod_t = 5 # Plaintext modulus (prime)
 dim   = (2,3)                 # dimensions of A in Rp^(m,n)
 

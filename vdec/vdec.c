@@ -683,9 +683,9 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     // printf("ct1_2: %lld \n", intvec_get_elem_i64(ct1_coeffs2, ct1_coeffs->nelems - 1));
 
     // adding other parts of u_v
-    intvec_set_zero(rot_s);
+    //intvec_set_zero(rot_s);
     intvec_add(u_v, rot_s, sum_tmp); 
-    // intvec_add(u_v, rot_s, u_v); 
+    //intvec_add(u_v, rot_s, u_v); 
     //intvec_add(u_v, sum_tmp, u_v);
     // printf("\n\n");
     // for (i=0; i<u_v->nelems; i++)
@@ -813,7 +813,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
 
         /* yv, append to m  */
         polyvec_grandom (yv, params->log2stdev4, seed, dom++); // stdev4 or 3??
-        // polyvec_set_zero(yv); // DEBUG to remove
+        //polyvec_set_zero(yv); // DEBUG to remove
         polyvec_set (yv_, yv);
         /* tyv */
         polyvec_set (tyv, yv);
@@ -1287,7 +1287,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
 
     // DEBUGGING
     b1 = 1; b2 = 1;
-    printf("checking h_our before computing hi");
+    printf("checking h_our before computing hi\n");
     for (i = 0; i < lambda / 2; i++)
     {
       poly = polyvec_get_elem (h_our, i);
@@ -1357,6 +1357,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     b1 = 1; b2 = 1;
     for (i = 0; i < lambda / 2; i++)
     {
+      printf("checking h %d\n", i);
       poly = polyvec_get_elem (h_our, i);
       coeff = poly_get_coeff (poly, 0);
       if (int_eqzero (coeff) != 1) {
@@ -2684,17 +2685,17 @@ __schwartz_zippel_accumulate_z (spolymat_ptr R2i[], spolyvec_ptr r1i[],
 
       R2tptr[0] = R2t;
 
-      // for (i = 0; i < m1; i++)
-      //   {
-      //     poly = spolymat_insert_elem (R2t, is1 + 1 + 2 * i, ibeta);
-      //     poly2 = spolymat_insert_elem (R2t, is1 + 1 + 2 * i, ibeta + 1);
+      for (i = 0; i < m1; i++)
+        {
+          poly = spolymat_insert_elem (R2t, is1 + 1 + 2 * i, ibeta);
+          poly2 = spolymat_insert_elem (R2t, is1 + 1 + 2 * i, ibeta + 1);
 
-      //     poly3 = polymat_get_elem (vRDs, k, i);
-      //     poly_set (poly2, poly3);
+          poly3 = polymat_get_elem (vRDs, k, i);
+          poly_set (poly2, poly3);
 
-      //     poly_scale (poly2, inv2, poly2);
-      //     poly_set (poly, poly2);
-      //   }
+          poly_scale (poly2, inv2, poly2);
+          poly_set (poly, poly2);
+        }
 
 
 
@@ -2776,10 +2777,10 @@ __schwartz_zippel_accumulate_z (spolymat_ptr R2i[], spolyvec_ptr r1i[],
 
       intmat_get_row (row1, V, k);
       intvec_dot (tmp, z4_, row1);
-      printf("dump tmp ");
-      int_mod(tmp, tmp, q);
-      int_redc(tmp, tmp, q);
-      int_dump(tmp);
+      // printf("dump tmp ");
+      // int_mod(tmp, tmp, q);
+      // int_redc(tmp, tmp, q);
+      // int_dump(tmp);
       coeff1 = poly_get_coeff (r0t, 0);
       int_mod (coeff1, tmp, q);
       int_neg_self (coeff1);
