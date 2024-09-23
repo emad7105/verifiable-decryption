@@ -683,7 +683,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     // printf("ct1_2: %lld \n", intvec_get_elem_i64(ct1_coeffs2, ct1_coeffs->nelems - 1));
 
     // adding other parts of u_v
-    //intvec_set_zero(rot_s);
+    // intvec_set_zero(sum_tmp);
     intvec_add(u_v, rot_s, sum_tmp); 
     //intvec_add(u_v, rot_s, u_v); 
     //intvec_add(u_v, sum_tmp, u_v);
@@ -2529,7 +2529,7 @@ __schwartz_zippel_accumulate_z (spolymat_ptr R2i[], spolyvec_ptr r1i[],
   // polyvec_t osk_polys;
   // polyvec_alloc(osk_polys, Rq, m1);
   // POLYVEC_T(sk_polys, Rq, m1);
-  // intvec_dump(fake_u_s);
+  // // intvec_dump(fake_u_s);
   // for (k = 0; k < m1; k++)
   //   {
   //     intvec_get_subvec (row1, fake_u_s, k*d, d, 1);
@@ -2538,11 +2538,11 @@ __schwartz_zippel_accumulate_z (spolymat_ptr R2i[], spolyvec_ptr r1i[],
   //     poly_set_coeffvec (poly, row1);
   //     //poly_dump(poly);
   //   }
-  // for (k = 0; k < m1; k++)
-  //   {
-  //     poly = polyvec_get_elem (sk_polys, k);
-  //     poly_dump(poly);
-  //   }
+  // // for (k = 0; k < m1; k++)
+  // //   {
+  // //     poly = polyvec_get_elem (sk_polys, k);
+  // //     poly_dump(poly);
+  // //   }
   // polyvec_auto(osk_polys, sk_polys);
   // poly = polyvec_get_elem(sk_polys, 0);
   // poly_dump(poly);
@@ -2687,8 +2687,8 @@ __schwartz_zippel_accumulate_z (spolymat_ptr R2i[], spolyvec_ptr r1i[],
 
       for (i = 0; i < m1; i++)
         {
-          poly = spolymat_insert_elem (R2t, is1 + 1 + 2 * i, ibeta);
-          poly2 = spolymat_insert_elem (R2t, is1 + 1 + 2 * i, ibeta + 1);
+          poly = spolymat_insert_elem (R2t, is1 + 2 * i, ibeta);
+          poly2 = spolymat_insert_elem (R2t, is1 + 2 * i, ibeta + 1);
 
           poly3 = polymat_get_elem (vRDs, k, i);
           poly_set (poly2, poly3);
@@ -2777,11 +2777,13 @@ __schwartz_zippel_accumulate_z (spolymat_ptr R2i[], spolyvec_ptr r1i[],
 
       intmat_get_row (row1, V, k);
       intvec_dot (tmp, z4_, row1);
-      // printf("dump tmp ");
-      // int_mod(tmp, tmp, q);
-      // int_redc(tmp, tmp, q);
-      // int_dump(tmp);
+
+      printf("dump tmp ");
+      int_mod(tmp, tmp, q);
+      int_redc(tmp, tmp, q);
+      int_dump(tmp);
       coeff1 = poly_get_coeff (r0t, 0);
+
       int_mod (coeff1, tmp, q);
       int_neg_self (coeff1);
       int_redc (coeff1, coeff1, q);
