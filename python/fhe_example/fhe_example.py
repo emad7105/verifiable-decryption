@@ -5,7 +5,7 @@ import hashlib          # for SHAKE128
 import secrets          # for RNG
 import numpy as np
 from math import sqrt
-from fhe_example_params import mod, deg, mod_t, v_e
+from fhe_example_params import mod, deg, mod_t, v_e, ct_count
 
 # BFV params
 deg = 2048
@@ -176,11 +176,12 @@ def add_footer_guards(file_path="vdec_ct.h", guard_name="VDEC_CT_H"):
     with open(file_path, "a") as file:
         file.write(footer_guard)
 
-def write_c_array_to_file(array, file_path="vdec_ct.h", array_name="static_sk", array_type="uint8_t"):
+def write_c_array_to_file(array, ct_count=1, file_path="vdec_ct.h", array_name="static_sk", array_type="uint8_t"):
     add_header_guards(file_path)
     
     # Convert the array elements to strings and join them with commas
     array_elements = ", ".join(map(str, array))
+    array_length = len(array)
     
     # Read the file contents if it exists
     try:
@@ -196,21 +197,37 @@ def write_c_array_to_file(array, file_path="vdec_ct.h", array_name="static_sk", 
         array_elements = f", {array_elements}\n}};\n"
     else:
         # Create a new array definition
-        array_elements = f"static const {array_type} {array_name}[] = {{\n    {array_elements}\n}};\n"
-
+        if ct_count == 1:
+            array_definition = f"static const {array_type} {array_name}[] = {{\n    {array_elements}\n}};\n"
+        else:
+            # Build an array of arrays
+            array_of_arrays = ",\n    ".join([f"{{ {array_elements} }}" for _ in range(ct_count)])
+            array_definition = f"static const {array_type} {array_name}[{ct_count}][{array_length}] = {{\n    {array_of_arrays}\n}};\n"
+        array_elements = array_definition
+    
     # Write or append the formatted array definition to the file
     with open(file_path, "a") as file:
         file.write(array_elements)
 
 
 
+# write_c_array_to_file(s.to_list(), array_name="static_sk", array_type="int64_t")
+# write_c_array_to_file(ct0.to_list(), array_name="static_ct0", array_type="int64_t")
+# write_c_array_to_file(ct1.to_list(), array_name="static_ct1", array_type="int64_t")
+# write_c_array_to_file(m_delta.to_list(), array_name="static_m_delta", array_type="int64_t")
+# write_c_array_to_file(v_inh.to_list(), array_name="static_v_inh", array_type="int64_t")
+# write_c_array_to_file(pk[0].to_list(), array_name="static_pk0", array_type="int64_t")
+# write_c_array_to_file(pk[1].to_list(), array_name="static_pk1", array_type="int64_t")
+# write_c_array_to_file(e.to_list(), array_name="static_e", array_type="int64_t")
+# add_footer_guards()
+
 write_c_array_to_file(s.to_list(), array_name="static_sk", array_type="int64_t")
-write_c_array_to_file(ct0.to_list(), array_name="static_ct0", array_type="int64_t")
-write_c_array_to_file(ct1.to_list(), array_name="static_ct1", array_type="int64_t")
-write_c_array_to_file(m_delta.to_list(), array_name="static_m_delta", array_type="int64_t")
-write_c_array_to_file(v_inh.to_list(), array_name="static_v_inh", array_type="int64_t")
+write_c_array_to_file(ct0.to_list(), ct_count=ct_count, array_name="static_ct0", array_type="int64_t")
+write_c_array_to_file(ct1.to_list(), ct_count=ct_count, array_name="static_ct1", array_type="int64_t")
+write_c_array_to_file(m_delta.to_list(), ct_count=ct_count, array_name="static_m_delta", array_type="int64_t")
+write_c_array_to_file(v_inh.to_list(), ct_count=ct_count, array_name="static_v_inh", array_type="int64_t")
 write_c_array_to_file(pk[0].to_list(), array_name="static_pk0", array_type="int64_t")
 write_c_array_to_file(pk[1].to_list(), array_name="static_pk1", array_type="int64_t")
-write_c_array_to_file(e.to_list(), array_name="static_e", array_type="int64_t")
+write_c_array_to_file(e.to_list(), ct_count=ct_count, array_name="static_e", array_type="int64_t")
 add_footer_guards()
 

@@ -11,6 +11,7 @@ from math import sqrt
 
 vname = "param"               # variable name
 
+ct_count = 64                  # number of ciphertexts
 deg   = 2048                  # ring Rp degree d
 mod   = 1099511629429                 # CT modulus
 mod_t = 5 # Plaintext modulus (prime)
