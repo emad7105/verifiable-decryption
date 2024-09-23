@@ -254,22 +254,22 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     uint8_t hashv[32] = { 0 };
     polyring_srcptr Rq = abdlop->ring;
     const unsigned int lambda = params->lambda;
-    const unsigned int N_ = lambda / 2;
+    // const unsigned int N_ = lambda / 2;
     INT_T (lo, Rq->q->nlimbs);
     INT_T (hi, Rq->q->nlimbs);
     int b;
-    uint8_t buf[2];
+    // uint8_t buf[2];
     uint32_t dom;
     unsigned int i, j, k;
 
-    polyvec_t asub, asub_auto, bsub, bsub_auto, subv;
+    polyvec_t subv;
     int_ptr coeff;
     polymat_t A1, A2prime, Bprime;
     polyvec_t s1, s2, m, tA1, tA2, tB, z1, z21, hint, h, s, tmp;
     poly_t c;
     poly_ptr poly;
-    const unsigned int n = 2 * (abdlop->m1 + abdlop->l) + params->lambda;
-    const unsigned int np = 2 * (abdlop->m1 + abdlop->l);
+    // const unsigned int n = 2 * (abdlop->m1 + abdlop->l) + params->lambda;
+    // const unsigned int np = 2 * (abdlop->m1 + abdlop->l);
     int b1 = 1, b2 = 1;
 
     dom = 0;
@@ -313,7 +313,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
 
 
     // build witness and commit
-    polyvec_t tobe_sk, tobe_m; // vectors to be committed using abdlop
+    polyvec_t tobe_sk; // vectors to be committed using abdlop
     polyvec_get_subvec(tobe_sk, s1, 0, sk->nelems, 1);
     polyvec_set(tobe_sk, sk);
 
@@ -470,7 +470,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     coder_state_t cstate;
     uint8_t hash0[32];
     uint8_t expseed[3 * 32];
-    const uint8_t *seed_rej34 = expseed;
+    // const uint8_t *seed_rej34 = expseed;
     const uint8_t *seed_cont = expseed + 32;
     const uint8_t *seed_cont2 = expseed + 64;
     /* buff for encoding of tg */
@@ -497,8 +497,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     // todo: why not instantiating s3coeffs?
     INTVEC_T (yv_coeffs, 256, int_get_nlimbs (Rq->q));
     INTVEC_T (zv_coeffs, 256, int_get_nlimbs (Rq->q));
-    polyvec_t tmp_polyvec, s1_, m_, s21, // s1_, m_ are probably not needed
-              yv_, tyv, tbeta, beta, yv, 
+    polyvec_t s21, yv_, tyv, tbeta, beta, yv,// s1_, m_ are probably not needed
               zv, zv_;
     // intvec_ptr coeffs; // already declared
     polymat_t Byv, Bbeta;
@@ -508,7 +507,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     rng_state_t rstate_rej;
     //uint32_t dom = 0; // already declared
     uint8_t rbits;
-    unsigned int nrbits, outlen, loff, off;
+    unsigned int nrbits, outlen, loff;
     uint8_t out_z34[CEIL (256 * 2 * log2q + d * log2q, 8) + 1];
     uint8_t cseed[32]; /* seed for challenge */
     //poly_ptr poly; // already declared
@@ -664,10 +663,6 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
         intvec_add (zv_coeffs, zv_coeffs, yv_coeffs);
         // printf("created z_v\n");
 
-        INTVEC_T (zv_coeffs2, 256, int_get_nlimbs (Rq->q));
-        int_ptr coeff1;
-        intvec_set_zero(zv_coeffs2);
-        intvec_add (zv_coeffs2, zv_coeffs2, yv_coeffs);
 
 
         /* rejection sampling */
@@ -1809,7 +1804,7 @@ __schwartz_zippel_accumulate_z (spolymat_ptr R2i[], spolyvec_ptr r1i[],
   poly_ptr r0tptr[1];
   int_ptr chal, acc;
   polymat_t mat, vRDs, vRDm; // vRpol;
-  polyvec_t subv1, subv2;
+  // polyvec_t subv1, subv2;
   int_ptr coeff1, coeff2;
   poly_ptr poly, poly2, poly3;
   int_srcptr inv2 = Rq->inv2;
