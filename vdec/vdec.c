@@ -8,7 +8,7 @@
 //#include "lnp-quad-eval-params1.h"
 // #include "vdec_ct_newq.h"
 //#include "vdec_ct.h"
-#include "vdec_ct_40bits.h"
+#include "vdec_ct_62bits.h"
 #include <mpfr.h>
 
 #define N 1 /* number of quadratic equations */
@@ -307,8 +307,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     const unsigned int nprime = ct0->nelems;
 
     printf("ajtai size: %d, bdlop size: %d, lext:%d, lambda:%d\n", m1, l, abdlop->lext, lambda);
-    printf("quad-many l: %d, quad-many lext:%d\n", params->quad_many->l, params->quad_many->lext);
-
+    printf("quad-many l: %d, quad-many lext:%d\n\n", params->quad_many->l, params->quad_many->lext);
 
     // #region Committing to witness
 
@@ -322,8 +321,8 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     // generate abdlop keys and commit to sk (ajtai part) and the vinh (bdlop part)
     abdlop_keygen (A1, A2prime, Bprime, seed, abdlop);
     abdlop_commit (tA1, tA2, tB, s1, m, s2, A1, A2prime, Bprime, abdlop);
-    printf("tA1 size:%d, tA2 size:%d, tB size:%d\n", tA1->nelems, tA2->nelems, tB->nelems);
-    printf("Bprime: %d rows, %d cols\n", Bprime->nrows, Bprime->ncols);
+    // printf("tA1 size:%d, tA2 size:%d, tB size:%d\n", tA1->nelems, tA2->nelems, tB->nelems);
+    // printf("Bprime: %d rows, %d cols\n", Bprime->nrows, Bprime->ncols);
 
     // #endregion
 
@@ -349,7 +348,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     }
 
     // u_v  
-    printf("start u_v build\n");
+    // printf("start u_v build\n");
     polyvec_t c0_m;
     polyvec_alloc(c0_m, Rq, ct0->nelems);
     polyvec_sub(c0_m, ct0, m_delta, 0);
@@ -403,7 +402,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     //INTMAT_T (Ds, 2047, 2047, Rq->q->nlimbs);
     intvec_t rot_coeffvec;
     poly_ptr Ds_elem;
-    printf("start u_v build\n");
+    // printf("start u_v build\n");
 
     // rotating coeffs of ct1 and multiplying with u_s
     intvec_reverse(ct1_coeffs, ct1_coeffs);
@@ -523,7 +522,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     polyvec_alloc (zv, Rq, 256 / d);
     polyvec_alloc (zv_, Rq, 256 / d);
 
-    printf("allocated space for building zv\n");
+    // printf("allocated space for building zv\n");
 
     /* s1 = s1_,upsilon, m = m_,y3_,y4_,beta */
     // from lnp-tbox: s1_ m_ probably not needed
@@ -546,9 +545,9 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
 
     polyvec_get_subvec (tbeta, tB, short_l + loff, 1, 1);
     polymat_get_submat (Bbeta, Bprime, short_l + loff, 0, 1, m2 - kmsis, 1, 1);
-    printf("tbeta in pos: %d out of %d\n", short_l+loff, tB->nelems);
+    // printf("tbeta in pos: %d out of %d\n", short_l+loff, tB->nelems);
 
-    printf("extracted subvecs for yv and beta commitments\n");
+    // printf("extracted subvecs for yv and beta commitments\n");
 
 
     // what is this for? -> rejection sampling state
@@ -569,7 +568,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
             rng_urandom (rstate_signs, &rbits, 1);
             nrbits = 8;
         }
-        printf("sampled signs\n");
+        // printf("sampled signs\n");
 
         /* yv, append to m  */
         polyvec_grandom (yv, params->log2stdev4, seed, dom++); // stdev4 or 3??
@@ -614,7 +613,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
         shake128_absorb (hstate_z34, out_z34, outlen);
         shake128_squeeze (hstate_z34, cseed, 32);
 
-        printf("created tbeta\n");
+        // printf("created tbeta\n");
 
         // calculate zv
         INT_T (beta_v_Rij_uv_j, int_get_nlimbs (Rq->q));
@@ -663,7 +662,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
         }
         intvec_mul_sgn_self (yv_coeffs, beta_v);
         intvec_add (zv_coeffs, zv_coeffs, yv_coeffs);
-        printf("created z_v\n");
+        // printf("created z_v\n");
 
         INTVEC_T (zv_coeffs2, 256, int_get_nlimbs (Rq->q));
         int_ptr coeff1;
@@ -701,12 +700,12 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     polyvec_set (zv, zv_);
 
     /* cleanup */
-    printf("will cleanup after calculating z's\n");
+    // printf("will cleanup after calculating z's\n");
     rng_clear (rstate_signs);
     rng_clear (rstate_rej);
     polyvec_free (yv);
     polyvec_free (zv_);
-    printf("finished cleaning up after z's\n");
+    // printf("finished cleaning up after z's\n");
 
     /************************************************************************/
     /*                                                                      */
@@ -731,7 +730,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     polymat_get_submat (Bextprime, Bprime, l, 0, lambda / 2, abdlop->m2 - abdlop->kmsis, 1, 1);
 
 
-    printf("building s - calculating automorphisms\n");
+    // printf("building s - calculating automorphisms\n");
     /* BUILDING: s = (<s1>,<m>,<y_v>,<beta_v>) */ // should this block be here? calculating automorphisms
     // automorphism of ajtai part (s1)
     polyvec_get_subvec (subv, s, 0, m1, 2);
@@ -759,7 +758,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     // end of block for calculating automorphisms
 
 
-    printf("generate random h with coeffs 0 and d/s == 0\n");
+    // printf("generate random h with coeffs 0 and d/s == 0\n");
     /* generate uniformly random h=g with coeffs 0 and d/2 == 0 */
     for (i = 0; i < lambda / 2; i++)
     {
@@ -772,7 +771,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     }
 
 
-    printf("append g to bdlop part and commit\n");
+    // printf("append g to bdlop part and commit\n");
     /* append g to message m */
     polyvec_get_subvec (subv, m, l, lambda / 2, 1);
     polyvec_set (subv, h_our);
@@ -800,7 +799,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     shake128_clear (hstate);
 
 
-    printf("going into quad and quad_eval eqs setup\n");
+    // printf("going into quad and quad_eval eqs setup\n");
     // instantiating QUAD + QUAD_EVAL eqs
     spolymat_t R2t;
     spolyvec_t r1t;
@@ -815,7 +814,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     poly_ptr r0prime_sz2[lambda / 2];
     const unsigned int ibeta = (m1 + short_l + loff) * 2;
 
-    printf("allocate space for 1 quad eq - R2t, r1t, r0t\n");
+    // printf("allocate space for 1 quad eq - R2t, r1t, r0t\n");
     /* allocate tmp space for 1 quadrativ eq */
     spolymat_alloc (R2t, Rq, n_, n_, NELEMS_DIAG (n_));
     spolymat_set_empty (R2t);
@@ -826,11 +825,11 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     poly_alloc (r0t, Rq);
     poly_set_zero (r0t);
 
-    printf("Allocate lambda/2 eqs for sz accumulators\n");
+    // printf("Allocate lambda/2 eqs for sz accumulators\n");
     /* allocate lambda/2 eqs (schwarz-zippel accumulators) */
     for (i = 0; i < lambda / 2; i++) {
       R2primei = alloc_wrapper(sizeof (spolymat_t));
-      printf("Allocating\n");
+      // printf("Allocating\n");
       spolymat_alloc (R2primei, Rq, np2, np2, NELEMS_DIAG (np2));
       R2prime_sz[i] = R2primei;
       spolymat_set_empty (R2prime_sz[i]);
@@ -851,7 +850,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
       r0prime_sz[i] = r0primei;
       poly_set_zero (r0prime_sz[i]);
     }
-    printf("Allocate lambda/2 eqs for sz accumulators - part2\n");
+    // printf("Allocate lambda/2 eqs for sz accumulators - part2\n");
     for (i = 0; i < lambda / 2; i++) {
       R2primei = alloc_wrapper (sizeof (spolymat_t));
       spolymat_alloc (R2primei, Rq, np2, np2, NELEMS_DIAG (np2));
@@ -883,7 +882,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     // -i4*beta^2 + i2*beta*o(beta) -i4*o(beta)^2 - 1 == 0 terms: R2: 3, r1: 0,
     // r0: 1 | * 1
 
-    printf("Setting up quad eqs for beta_v\n");
+    // printf("Setting up quad eqs for beta_v\n");
     i = lambda / 2;
 
     R2primei = alloc_wrapper (sizeof (spolymat_t));
@@ -959,7 +958,6 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
 
 
     POLY_T (tmp1, Rq);
-    printf("\nabdlop: m1 = %d, l = %d\n", abdlop->m1, abdlop->l);
     /* compute/output hi and set up quadeqs for lower level protocol */
     for (i = 0; i < lambda / 2; i++) {
         polyvec_get_subvec (subv, s, 0, n_, 1);
@@ -992,7 +990,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     lnp_quad_many_prove (hashp, tB, c, z1, z21, hint, s1, m, s2, tA2, A1, A2prime,
                         Bprime, R2prime_sz, r1prime_sz, lambda / 2 + 1,
                         seed_cont2, params->quad_many);
-    printf("finished proof generation\n");
+    printf("finished proof generation\n\n");
 
     /************************************************************************/
     /*                                                                      */
@@ -1012,7 +1010,6 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     b1 = 1; b2 = 1;
     for (i = 0; i < lambda / 2; i++)
     {
-      printf("checking h %d\n", i);
       poly = polyvec_get_elem (h_our, i);
       coeff = poly_get_coeff (poly, 0);
       if (int_eqzero (coeff) != 1) {
@@ -1032,7 +1029,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
 
     /* expect successful verification */
     //memset (hashv, 0xff, 32);
-    printf("verifying our quad_many proof\n");
+    //printf("verifying our quad_many proof\n");
     b = lnp_quad_many_verify (hashv, c, z1, z21, hint, tA1, tB, A1, A2prime,
                               Bprime, R2prime_sz, r1prime_sz, r0prime_sz,
                               lambda / 2 + 1, params->quad_many);
@@ -1800,7 +1797,6 @@ __schwartz_zippel_accumulate_z (spolymat_ptr R2i[], spolyvec_ptr r1i[],
   const unsigned int loff3 = (nex > 0 ? 256 / d : 0);
   const unsigned int loff4 = (nprime > 0 ? 256 / d : 0);
   const unsigned int loff = loff3 + loff4;
-  printf("  - loff=%d\n", loff);
   const unsigned int ibeta = (m1 + Z + l + loff) * 2; // XXX correct
   const unsigned int is1 = 0;
   const unsigned int im = (m1 + Z) * 2;
@@ -1859,12 +1855,12 @@ __schwartz_zippel_accumulate_z (spolymat_ptr R2i[], spolyvec_ptr r1i[],
 
   // compute vR=v*Rprime
   // then vR*Ds, vR*Dm, vR*u
-  printf("  - m1=%d, l=%d\n", m1, l);
-  printf("  - is1=%d, im=%d, iy4=%d, ibeta=%d\n", is1, im, iy4, ibeta);
+  // printf("  - m1=%d, l=%d\n", m1, l);
+  // printf("  - is1=%d, im=%d, iy4=%d, ibeta=%d\n", is1, im, iy4, ibeta);
 
-  printf("start accumulating z_v\n");
+  // printf("start accumulating z_v\n");
 
-  printf("  - building z4_\n");
+  // printf("  - building z4_\n");
   // instantiates z4_ intvec of coefficients of z4
   for (i = 0; i < loff4; i++)
     {
@@ -1889,7 +1885,7 @@ __schwartz_zippel_accumulate_z (spolymat_ptr R2i[], spolyvec_ptr r1i[],
 
   intmat_set_zero (vR);
   // vR is lambda * nprime*d matrix where challenge k out of lambda multiplies line k of matrix R
-  printf("  - building vR and RDs\n");
+  // printf("  - building vR and RDs\n");
   // #region building vR + vR_ + RDs
   for (i = 0; i < 256; i++)
     {
@@ -1935,7 +1931,7 @@ __schwartz_zippel_accumulate_z (spolymat_ptr R2i[], spolyvec_ptr r1i[],
         }
       }
     }
-  printf("finished building vR and RDs\n");
+  // printf("finished building vR and RDs\n");
 
 
 
@@ -1980,12 +1976,12 @@ __schwartz_zippel_accumulate_z (spolymat_ptr R2i[], spolyvec_ptr r1i[],
 
 
   // #region vRDs
-  printf("  - computing o(RDs)\n");
+  // printf("  - computing o(RDs)\n");
   polymat_t oRDs;
   polymat_alloc(oRDs, Rq, RDs->nrows, RDs->ncols);
   polymat_auto (oRDs, RDs);
 
-  printf("  - computing vRDs\n");
+  // printf("  - computing vRDs\n");
   for (k = 0; k < lambda; k++) {
     intmat_get_row(row1, V, k);
 
@@ -2003,7 +1999,7 @@ __schwartz_zippel_accumulate_z (spolymat_ptr R2i[], spolyvec_ptr r1i[],
   // #endregion
 
 
-  printf("  - building vRDm (old version)\n");
+  //printf("  - building vRDm (old version)\n");
   if (l > 0 && Dm != NULL) {
     for (k = 0; k < lambda; k++) {
         intmat_get_row(row1, vR_, k);
@@ -2191,7 +2187,7 @@ __schwartz_zippel_accumulate_z (spolymat_ptr R2i[], spolyvec_ptr r1i[],
       int_neg_self (coeff1);
       int_redc (coeff1, coeff1, q);
 
-      printf("  - calling accumulate functions\n");
+      // printf("  - calling accumulate functions\n");
       if (k % 2 == 0)
         __schwartz_zippel_accumulate_ (R2i[k / 2], r1i[k / 2], r0i[k / 2],
                                        R2tptr, r1tptr, r0tptr, 1,
