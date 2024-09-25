@@ -6,7 +6,8 @@ import sys
 q = 2**60  # fhe ciphertext modulus (same as proof modulus)
 delta_m =  2048 # 
 t_inf =  5 # infinity norm of plaintext space
-
+#noise_dim = 1 * 12288 # number ctxts (64) * fhe_dimension
+noise_dim = 1
 
 # Emad
 #Bprime = 4                  # set linf norm bound; this is needed by alpha4; alpha4 is needed by gamma4
@@ -139,7 +140,7 @@ stdev1 = gamma1 * mpf(eta) * alpha
 stdev2 = mpf(0)  # set later (depends on length of randomness s2)
 
 # standard deviations for bimodal rejection sampling
-stdev4 = gamma4 * mp.sqrt(337) * alpha4
+stdev4 = gamma4 * mp.sqrt(337) * alpha4 * mp.sqrt(noise_dim)
 
 # XXX
 stdev1 = round_stdev(stdev1)
