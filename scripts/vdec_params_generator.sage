@@ -3,14 +3,15 @@ from mpmath import mpf, nstr
 import sys
 
 # Mariana
-q = 2**63  # fhe ciphertext modulus (same as proof modulus)
+q = 2**60  # fhe ciphertext modulus (same as proof modulus)
 delta_m =  2048 # 
 t_inf =  5 # infinity norm of plaintext space
 
 
 # Emad
-Bprime = 4                  # set linf norm bound; this is needed by alpha4; alpha4 is needed by gamma4
+#Bprime = 4                  # set linf norm bound; this is needed by alpha4; alpha4 is needed by gamma4
 Bprime = q / (2 * delta_m * t_inf) - 1/2
+#Bprime = 2**15
 
 # cannot print more than 822
 mp.mp.prec = 512
@@ -63,6 +64,7 @@ KAPPA = 128    # security param, bit security
 DELTA128 = 1.0044  # root hermite factor for 128-bit security
 # number of irreducible factors of X^d + 1 modulo each q_i,  q_i = 2l+1 (mod 4l)
 L = 2
+T = 1.64  # for KAPPA=128
 NADDS = 128  # chose P big enough for this many additions
 
 # default values rejection sampling
@@ -362,7 +364,8 @@ moduli = moduli_list(nbit, d, minP)[0]
 assert prod(moduli) >= minP
 nmoduli = len(moduli)
 
-Bz4 = floor(sqrt(2*KAPPA)*stdev4)
+Bz4 = floor((T*stdev4*sqrt(256)) ** 2)
+#Bz4 = floor(sqrt(2*KAPPA)*stdev4)
 
 out = ""
 out += f"""
@@ -384,7 +387,7 @@ out += f"""
 {int_t(f"{name}_stdev4sq", int(mp.nint(stdev4^2)), 2*q_nlimbs)}
 {int_t(f"{name}_inv2", redc(1/2 % q, q))}
 {int_t(f"{name}_inv4", redc(1/4 % q, q))}
-{int_t(f"{name}_Bz4", Bz4, q_nlimbs)}
+{int_t(f"{name}_Bz4", Bz4, 2*q_nlimbs)}
 static const polyring_t {name}_ring = {{{{{name}_q, {d}, {ceil(log(q-1,2))}, {log2d}, moduli_d{d}, {nmoduli}, {name}_inv2}}}};
 static const dcompress_params_t {name}_dcomp = {{{{ {name}_q, {name}_qminus1, {name}_m, {name}_mby2, {name}_gamma, {name}_gammaby2, {name}_pow2D, {name}_pow2Dby2, {D}, {m % 2}, {ceil(log(m,2))} }}}};
 static const abdlop_params_t {name}_quad_eval = {{{{ {name}_ring, {name}_dcomp, {m1}, {m2}, {l}, {lext}, {kmsis}, {name}_Bsq, {nu}, {omega}, {omega_bits}, {eta}, {rejs1}, {log2stdev1}, {name}_scM1, {name}_stdev1sq, {rejs2}, {log2stdev2}, {name}_scM2, {name}_stdev2sq}}}};
