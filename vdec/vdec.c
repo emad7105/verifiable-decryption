@@ -9,14 +9,16 @@
 // #include "vdec_ct_newq.h"
 //#include "vdec_ct.h"
 // #include "vdec_ct_62bits.h"
-#include "vdec_ct_60bits.h"
-//#include "vdec_ct_gbfv_60bits.h"
+//#include "vdec_ct_60bits.h"
+#include "vdec_ct_gbfv_60bits.h"
 #include <mpfr.h>
 
 #define N 1 /* number of quadratic equations */
 #define M 1 /* number of quadratic eval equations */
 #define CT_COUNT 1 /* number of ciphertexts */
-#define GBFV 0 /* if using BFV instead, set to 0 (changes rotation function) */
+#define GBFV 1 /* if using BFV instead, set to 0 (changes rotation function) */
+#define DEGREE 12288 /* fhe degree */
+//#define DEGREE 2048
 
 /* Number of elements in an n x n (upper) diagonal matrix. */
 #define NELEMS_DIAG(n) (((n) * (n) - (n)) / 2 + (n))
@@ -105,8 +107,7 @@ int main(void)
     // printf("\nring modulus bits = %d\n", Rq->d);
     
     /* fhe parameters */
-    const unsigned int fhe_degree = 2048;
-    // const unsigned int fhe_degree = 12288;
+    const unsigned int fhe_degree = DEGREE;
     //const int_t fhe_modulus;
     //int_alloc(fhe_modulus, Rq->q->nlimbs);
     //int_set_i64(fhe_modulus, 2^54+1);
@@ -124,10 +125,10 @@ int main(void)
         coeffs = poly_get_coeffvec (poly);
         for (size_t j=0; j<proof_degree ; j++) {
             intvec_set_elem_i64(coeffs,j,static_sk[j+i*proof_degree]);
-            // printf("sk elem: %d\n", static_sk[j+i*proof_degree]);
+            //printf("sk elem (%d): %d\n", j+i*proof_degree, static_sk[j+i*proof_degree]);
         }
     }
-    // print_polyvec_element("First element of sk", sk_vec_polys, 0, 64);
+    //print_polyvec_element("First element of sk", sk_vec_polys, 0, 64);
 
     /* INIT ct0 */
     // in this section, we flatten the ct0[][] 2D array to a large 1D array of polynomials
@@ -170,6 +171,7 @@ int main(void)
           }
       }
     }
+    // print_polyvec_element("First element of ct0", ct0_vec_polys, 0, 64);
     // some manual tests:
     // print_polyvec_element("First element of ct0", ct0_vec_polys, 0, 1);
     // print_polyvec_element("Last element of ct0", ct0_vec_polys, ct0_vec_polys->nelems-1, 64);
@@ -217,7 +219,7 @@ int main(void)
           }
       }
     }
-
+    // print_polyvec_element("First element of ct1", ct1_vec_polys, 0, 64);
 
     // some manual tests:
     // print_polyvec_element("First element of ct1", ct1_vec_polys, 0, 1);
@@ -352,7 +354,6 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
                           polyvec_t sk, polyvec_t ct0, polyvec_t ct1, 
                           polyvec_t m_delta, unsigned int fhe_degree)
 {
-
     /************************************************************************/
     /*                                                                      */
     /*    OUR CUSTOM PROOF: committing to witness + computing u vectors     */
@@ -508,6 +509,8 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     INTVEC_T(rot_s_vec, d * n, Rq->q->nlimbs);
     intvec_ptr rot_s = &rot_s_vec;
 
+
+
     for (k=0; k<CT_COUNT; k++) {
       // getting k-th ct1 coeffs
       INTVEC_T(ct1_coeffs_vec, d * n, Rq->q->nlimbs);
@@ -523,7 +526,6 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
       INTVEC_T(ct1_coeffs_vec2, d * n, Rq->q->nlimbs);
       intvec_ptr ct1_coeffs2 = &ct1_coeffs_vec2;
 
-
       //test_gbfv_rot(Rq);
       if (GBFV == 1) {
         printf("start u_v build with GBFV\n");
@@ -531,6 +533,24 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
         intmat_alloc(Ds_coeffs_vec, fhe_degree, m1*d, Rq->q->nlimbs);
         intmat_ptr Ds_coeffs = &Ds_coeffs_vec;
         gbfv_rot(Ds_coeffs, ct1_coeffs, Rq);
+
+        // intmat_get_col(ct1_coeffs2, Ds_coeffs, 0);
+        // for (i=11262; i<11266; i++)
+        //   printf("%lld ", intvec_get_elem_i64(ct1_coeffs2, i));
+        // printf("\n\n");
+        // intmat_get_col(ct1_coeffs2, Ds_coeffs, 1);
+        // for (i=11262; i<11266; i++)
+        //   printf("%lld ", intvec_get_elem_i64(ct1_coeffs2, i));
+        // printf("\n\n");
+        // intmat_get_col(ct1_coeffs2, Ds_coeffs, 2);
+        // for (i=11262; i<11266; i++)
+        //   printf("%lld ", intvec_get_elem_i64(ct1_coeffs2, i));
+        // printf("\n\n");
+
+        // intmat_get_row(ct1_coeffs2, Ds_coeffs, 0);
+        // for (i=0; i<10; i++)
+        //   printf("%lld ", intvec_get_elem_i64(ct1_coeffs2, i));
+        // printf("\n\n");
 
         intvec_t rot_coeffvec;
         poly_ptr Ds_elem;
@@ -601,7 +621,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     // int_dump(coeff);
 
     // printf("dumping u_v\n");
-    // for (i=0; i<u_v->nelems; i++)
+    // for (i=0; i<10; i++)
     //     printf("%d ", intvec_get_elem_i64(u_v, i));
     // printf("\n");
 
@@ -1135,6 +1155,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     }
     // # endregion
 
+    printf("quad many prove...\n");
     memcpy(hashv, hashp, 32);
     lnp_quad_many_prove (hashp, tB, c, z1, z21, hint, s1, m, s2, tA2, A1, A2prime,
                         Bprime, R2prime_sz, r1prime_sz, lambda / 2 + 1,
@@ -1536,6 +1557,9 @@ void gbfv_rot (intmat_t r, const intvec_t c1, const polyring_t ring) {
     INTVEC_T(my_vector_rotated, r->nrows, ring->q->nlimbs);
     intvec_ptr my_vector_rotated_ptr = &my_vector_rotated;
 
+    INTVEC_T(previous_rotated, r->nrows, ring->q->nlimbs);
+    intvec_ptr previous_rotated_ptr = &previous_rotated;
+
     //intvec_reverse(my_vector, my_vector);
     int_ptr multiplier, coeff1, coeff2;
     INT_T (new, 2*ring->q->nlimbs);
@@ -1543,12 +1567,13 @@ void gbfv_rot (intmat_t r, const intvec_t c1, const polyring_t ring) {
         //printf("i = %d\n", i);
         multiplier = intvec_get_elem(my_vector_rotated, 0);
         //int_dump(multiplier);
-        intvec_lrot(my_vector_rotated_ptr, c1, i+1);
+        intmat_get_col(previous_rotated, tmp_mat, i);
+        intvec_lrot(my_vector_rotated_ptr, previous_rotated, 1);
         //int_dump(multiplier);
 
         for (int j=0; j<sizeof(signs)/sizeof(signs[0]); j++) {
           //if (signs[j] == 1 || signs[j] == -1) {
-          //printf("i,j = %d, %d\n", i, j);
+          // printf("i,j = %d, %d\n", i, j);
           coeff1 = intvec_get_elem(my_vector_rotated_ptr, offsets[j]);
           //int_dump(coeff1);
           int_set(new, multiplier);
@@ -1565,6 +1590,10 @@ void gbfv_rot (intmat_t r, const intvec_t c1, const polyring_t ring) {
         intvec_set(col, my_vector_rotated);
     }
 
+    // intmat_get_col(col, tmp_mat, 0);
+    // for (int i=0; i<10; i++)
+    //   printf("%d ", intvec_get_elem_i64(col, i));
+    // printf("\n\n");
 
     intmat_set(r, tmp_mat);
     printf("- Building rot ended.\n");
