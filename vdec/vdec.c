@@ -2003,10 +2003,6 @@ __schwartz_zippel_accumulate_z (spolymat_ptr R2i[], spolyvec_ptr r1i[],
     }
   //printf("\n");
 
-// originally v*R, then v*R * o(Ds)
-// o(v*R * Ds)
-// v * o(R*Ds)
-
 
   polymat_t RDs;
   polymat_alloc (RDs, Rq, 256, m1);
