@@ -16,7 +16,7 @@
 #define N 1 /* number of quadratic equations */
 #define M 1 /* number of quadratic eval equations */
 #define CT_COUNT 1 /* number of ciphertexts */
-#define GBFV 1 /* if using BFV instead, set to 0 (changes rotation function) */
+#define GBFV 0 /* if using BFV instead, set to 0 (changes rotation function) */
 
 /* Number of elements in an n x n (upper) diagonal matrix. */
 #define NELEMS_DIAG(n) (((n) * (n) - (n)) / 2 + (n))
