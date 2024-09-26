@@ -502,15 +502,13 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     printf("\nn: %d", n);
     printf("\nr (CT_COUNT): %d\n", CT_COUNT);
 
-    // intvec_ptr rot_s;
     polymat_t Ds;
-    // polymat_alloc (Ds, Rq, nprime*d, m1);
     polymat_alloc (Ds, Rq, CT_COUNT*n*d, m1);
     INTVEC_T(w_sk, CT_COUNT*d*n, Rq->q->nlimbs);
     INTVEC_T(rot_s_vec, d * n, Rq->q->nlimbs);
     intvec_ptr rot_s = &rot_s_vec;
-    for (k=0; k<CT_COUNT; k++) {
 
+    for (k=0; k<CT_COUNT; k++) {
       // getting k-th ct1 coeffs
       INTVEC_T(ct1_coeffs_vec, d * n, Rq->q->nlimbs);
       intvec_ptr ct1_coeffs = &ct1_coeffs_vec;
@@ -525,46 +523,75 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
       INTVEC_T(ct1_coeffs_vec2, d * n, Rq->q->nlimbs);
       intvec_ptr ct1_coeffs2 = &ct1_coeffs_vec2;
 
-      
-      //INTMAT_T (Ds, 2047, 2047, Rq->q->nlimbs);
-      intvec_t rot_coeffvec;
-      poly_ptr Ds_elem;
-      // printf("start u_v build\n");
 
+      //test_gbfv_rot(Rq);
+      if (GBFV == 1) {
+        printf("start u_v build with GBFV\n");
+        intmat_t Ds_coeffs_vec;
+        intmat_alloc(Ds_coeffs_vec, fhe_degree, m1*d, Rq->q->nlimbs);
+        intmat_ptr Ds_coeffs = &Ds_coeffs_vec;
+        gbfv_rot(Ds_coeffs, ct1_coeffs, Rq);
 
-      // rotating coeffs of k-th ct1 and multiplying with u_s
-      intvec_reverse(ct1_coeffs, ct1_coeffs);
-      INT_T (new, 2 * Rq->q->nlimbs);
-      for (i=0; i<(d * n); i++) {
-          intvec_lrot(ct1_coeffs2, ct1_coeffs, i+1);
-          intvec_neg_self(ct1_coeffs2);
+        intvec_t rot_coeffvec;
+        poly_ptr Ds_elem;
+        // rotating coeffs of k-th ct1 and multiplying with u_s
+        INT_T (new, 2 * Rq->q->nlimbs);
+        for (i=0; i<(d * n); i++) {
+            intmat_get_row(ct1_coeffs2, Ds_coeffs, i);
+            for (j=0; j<(ct1_coeffs2->nelems)/d; j++) {
+                intvec_get_subvec (rot_coeffvec, ct1_coeffs2, 0+j*d, d, 1); // XXX correct
+                Ds_elem = polymat_get_elem(Ds, k*(n*d)+i, j);
+                poly_set_coeffvec(Ds_elem, rot_coeffvec);
+            }
+            intvec_dot(new, ct1_coeffs2, u_s); // TO UNCOMMENT
+            // do we need to do mod and redc?
+            //printf("new1: %lld\n", int_get_i64(new));
+            int_mod(new, new, Rq->q);
+            //printf("new2: %lld\n", int_get_i64(new));
+            int_redc(new, new, Rq->q);
+            //printf("new3: %lld\n", int_get_i64(new));
+            intvec_set_elem(rot_s, i, new);
 
-          for (j=0; j<(ct1_coeffs2->nelems)/d; j++) {
-              intvec_get_subvec (rot_coeffvec, ct1_coeffs2, 0+j*d, d, 1); // XXX correct
-              Ds_elem = polymat_get_elem(Ds, k*(n*d)+i, j);
-              poly_set_coeffvec(Ds_elem, rot_coeffvec);
-          }
-          //printf("%lld ", intvec_get_elem_i64(ct1_coeffs2, i));
-          // INTVEC_T(fake_u_s, d * sk->nelems, Rq->q->nlimbs);
-          // intvec_set_ones(fake_u_s);
-          // intvec_dot(new, ct1_coeffs2, fake_u_s);
-          intvec_dot(new, ct1_coeffs2, u_s); // TO UNCOMMENT
-          // do we need to do mod and redc?
-          //printf("new1: %lld\n", int_get_i64(new));
-          int_mod(new, new, Rq->q);
-          //printf("new2: %lld\n", int_get_i64(new));
-          int_redc(new, new, Rq->q);
-          //printf("new3: %lld\n", int_get_i64(new));
-          intvec_set_elem(rot_s, i, new);
+            //printf("%lld ", intvec_get_elem_i64(ct1_coeffs2, i));
+        }
+      }
+      else if (GBFV == 0) {
+        printf("start u_v build with BFV\n");
+        intvec_t rot_coeffvec;
+        poly_ptr Ds_elem;
+        // rotating coeffs of k-th ct1 and multiplying with u_s
+        intvec_reverse(ct1_coeffs, ct1_coeffs);
+        INT_T (new, 2 * Rq->q->nlimbs);
+        for (i=0; i<(d * n); i++) {
+            intvec_lrot(ct1_coeffs2, ct1_coeffs, i+1);
+            intvec_neg_self(ct1_coeffs2);
 
-          //printf("%lld ", intvec_get_elem_i64(ct1_coeffs2, i));
+            for (j=0; j<(ct1_coeffs2->nelems)/d; j++) {
+                intvec_get_subvec (rot_coeffvec, ct1_coeffs2, 0+j*d, d, 1); // XXX correct
+                Ds_elem = polymat_get_elem(Ds, k*(n*d)+i, j);
+                poly_set_coeffvec(Ds_elem, rot_coeffvec);
+            }
+            //printf("%lld ", intvec_get_elem_i64(ct1_coeffs2, i));
+            // INTVEC_T(fake_u_s, d * sk->nelems, Rq->q->nlimbs);
+            // intvec_set_ones(fake_u_s);
+            // intvec_dot(new, ct1_coeffs2, fake_u_s);
+            intvec_dot(new, ct1_coeffs2, u_s); // TO UNCOMMENT
+            // do we need to do mod and redc?
+            //printf("new1: %lld\n", int_get_i64(new));
+            int_mod(new, new, Rq->q);
+            //printf("new2: %lld\n", int_get_i64(new));
+            int_redc(new, new, Rq->q);
+            //printf("new3: %lld\n", int_get_i64(new));
+            intvec_set_elem(rot_s, i, new);
+
+            //printf("%lld ", intvec_get_elem_i64(ct1_coeffs2, i));
+        }
       }
 
       for (i=0; i<(n*d); i++) {
         intvec_set_elem(w_sk, k*(d*n) + i, intvec_get_elem(rot_s, i));
       }
     }
-
 
     intvec_add(u_v, w_sk, sum_tmp);
     // printf("dumping w_sk\n");
@@ -1371,6 +1398,178 @@ void test_lrot (const polyring_t ring) {
 
     printf("- Testig lrot ended.\n");
 }
+
+void test_gbfv_rot (const polyring_t ring) {
+    printf("\n- Testig rotation ...\n");
+    poly_t poly, poly2, poly3;
+    poly_alloc(poly, ring);
+    poly_alloc(poly2, ring);
+    poly_alloc(poly3, ring);
+
+    // prepare materials from polynomial modulus
+    // INTVEC_T(signs, 7, ring->q->nlimbs);
+    // intvec_ptr signs_ptr = &signs;
+    // INTVEC_T(signs_scaled, 7, 2*ring->q->nlimbs);
+    // intvec_ptr signs_scaled_ptr = &signs_scaled;
+    int offsets[] = {3, 5, 7, 9, 10, 15, 62};
+    int signs[] = {1, -1, 1, -1, 1, -1, 1};
+    // intvec_set_elem_i64(signs, 0, 1);
+    // intvec_set_elem_i64(signs, 1, -1);
+    // intvec_set_elem_i64(signs, 2, 1);
+    // intvec_set_elem_i64(signs, 3, -1);
+    // intvec_set_elem_i64(signs, 4, 1);
+    // intvec_set_elem_i64(signs, 5, -1);
+    // intvec_set_elem_i64(signs, 6, 1);
+
+    //intvec_dump(signs);
+
+
+    // Create a vector with 5 elements
+    INTVEC_T(my_vector, ring->d, ring->q->nlimbs);
+    // Set elements to 1, 2, 3, 4, 5
+    for (size_t i = 0; i < ring->d; i++)
+    {
+        intvec_set_elem_i64(my_vector, i, i+1);
+    }
+    intvec_set_elem_i64(my_vector, 0, 1);
+    printf("my_vector1: " );
+    intvec_dump(my_vector); // prints vector
+
+    poly_set_coeffvec(poly, my_vector);
+    for (size_t i = 0; i < poly->coeffs->nelems; i++)
+        printf("%lld ", (long long)intvec_get_elem_i64(poly->coeffs, i));
+    printf("\n");
+
+    INTVEC_T(my_vector2, ring->d, ring->q->nlimbs);
+    // Set elements to 1, 2, 3, 4, 5
+    for (size_t i = 0; i < ring->d; i++)
+    {
+        intvec_set_elem_i64(my_vector2, i, i+1);
+    }
+    intvec_set_elem_i64(my_vector2, 0, 1);
+    printf("my_vector2: " );
+    intvec_dump(my_vector2); // prints vector
+
+    poly_set_coeffvec(poly2, my_vector2);
+    for (size_t i = 0; i < poly2->coeffs->nelems; i++)
+        printf("%lld ", (long long)intvec_get_elem_i64(poly2->coeffs, i));
+    printf("\n");
+
+    INTVEC_T(my_vector_rotated, ring->d, ring->q->nlimbs);
+    intvec_ptr my_vector_rotated_ptr = &my_vector_rotated;
+
+
+    //intvec_reverse(my_vector, my_vector);
+    int_ptr multiplier, coeff1, coeff2;
+    // Rot(my_vector) * my_vector2
+    INTVEC_T(rot_s_vec, ring->d, ring->q->nlimbs);
+    INT_T (new, 2*ring->q->nlimbs);
+    for (int i=0; i<my_vector_rotated_ptr->nelems; i++) {
+        multiplier = intvec_get_elem(my_vector_rotated, 0);
+        int_dump(multiplier);
+        intvec_lrot(my_vector_rotated_ptr, my_vector, i+1);
+        int_dump(multiplier);
+
+        //intvec_scale(signs_scaled_ptr, multiplier, signs_ptr);
+        //intvec_dump(signs_scaled);
+        printf("len signs = %d\n",sizeof(signs)/sizeof(signs[0]));
+
+        for (int j=0; j<sizeof(signs)/sizeof(signs[0]); j++) {
+          //printf("i,j = %d, %d\n", i, j);
+          coeff1 = intvec_get_elem(my_vector_rotated_ptr, offsets[j]);
+          //int_dump(coeff1);
+          int_set(new, multiplier);
+          int_mul_sgn_self(new, signs[j]);
+          //coeff2 = intvec_get_elem(signs_scaled_ptr, j);
+          //int_dump(coeff2);
+          // printf("hi5");
+          int_add(coeff1, coeff1, new);
+          //intvec_set_elem(my_vector_rotated_ptr, offsets+1, new);
+        }
+
+        //intvec_neg_self(my_vector_rotated_ptr);
+        intvec_dump(my_vector_rotated);
+        //intvec_dot(new, my_vector_rotated_ptr, my_vector2);
+        
+        // do we need to do mod and redc?
+        //printf("new1: %lld\n", int_get_i64(new));
+        //int_mod(new, new, ring->q);
+        //printf("new2: %lld\n", int_get_i64(new));
+        //int_redp(new, new, ring->q);
+        //printf("new3: %lld\n", int_get_i64(new));
+        //intvec_set_elem(&rot_s_vec, i, new);
+
+        //printf("%lld ", intvec_get_elem_i64(ct1_coeffs2, i));
+    }
+
+    // printf("Rot(my_vector) * my_vector2: " );
+    // intvec_dump(rot_s_vec); // prints vector
+    // printf("\n");
+
+    // poly_mul(poly3, poly, poly2);
+    // poly_redc(poly3, poly3);
+    // intvec_dump(poly3->coeffs);
+
+    printf("- Testig lrot ended.\n");
+}
+
+void gbfv_rot (intmat_t r, const intvec_t c1, const polyring_t ring) {
+    printf("\n- Building GBFV rotation ...\n");
+
+    intmat_t tmp_mat;
+    intmat_alloc(tmp_mat, r->nrows, r->ncols, ring->q->nlimbs);
+
+    INTVEC_T(colvec, r->nrows, ring->q->nlimbs);
+    intvec_ptr col = &colvec;
+
+    intmat_get_col(col, tmp_mat, 0);
+    intvec_set(col, c1);
+
+    // prepare materials from polynomial modulus
+    int offsets[] = {1024, 3072, 4096, 6144, 8192, 9216, 11264};
+    int signs[] = {1, -1, -1, 1, -1, -1, 1};
+    // int offsets[] = {0, 0, 0, 0, 0, 0, 0};
+    // int signs[] = {1, 0, 0, 0, 0, 0, 0};
+
+
+    // prepare materials from polynomial modulus
+    INTVEC_T(my_vector_rotated, r->nrows, ring->q->nlimbs);
+    intvec_ptr my_vector_rotated_ptr = &my_vector_rotated;
+
+    //intvec_reverse(my_vector, my_vector);
+    int_ptr multiplier, coeff1, coeff2;
+    INT_T (new, 2*ring->q->nlimbs);
+    for (int i=0; i<my_vector_rotated_ptr->nelems-1; i++) {
+        //printf("i = %d\n", i);
+        multiplier = intvec_get_elem(my_vector_rotated, 0);
+        //int_dump(multiplier);
+        intvec_lrot(my_vector_rotated_ptr, c1, i+1);
+        //int_dump(multiplier);
+
+        for (int j=0; j<sizeof(signs)/sizeof(signs[0]); j++) {
+          //if (signs[j] == 1 || signs[j] == -1) {
+          //printf("i,j = %d, %d\n", i, j);
+          coeff1 = intvec_get_elem(my_vector_rotated_ptr, offsets[j]);
+          //int_dump(coeff1);
+          int_set(new, multiplier);
+          int_mul_sgn_self(new, signs[j]);
+          //int_dump(coeff2);
+          int_add(coeff1, coeff1, new);
+          // int_mod(coeff1, coeff1, ring->q);
+          // int_redc(coeff1, coeff1, ring->q);
+          //}
+        }
+        //intvec_dump(my_vector_rotated);
+
+        intmat_get_col(col, tmp_mat, i+1);
+        intvec_set(col, my_vector_rotated);
+    }
+
+
+    intmat_set(r, tmp_mat);
+    printf("- Building rot ended.\n");
+}
+
 
 /* expand i-th row of Rprime from cseed and 256 + i */
 // static inline void
