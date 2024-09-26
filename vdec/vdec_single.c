@@ -8,15 +8,14 @@
 //#include "lnp-quad-eval-params1.h"
 // #include "vdec_ct_newq.h"
 //#include "vdec_ct.h"
-// #include "vdec_ct_62bits.h"
-#include "vdec_ct_60bits.h"
-//#include "vdec_ct_gbfv_60bits.h"
+//#include "vdec_ct_60bits.h"
+#include "vdec_ct_gbfv_60bits.h"
 #include <mpfr.h>
 
 #define N 1 /* number of quadratic equations */
 #define M 1 /* number of quadratic eval equations */
-#define CT_COUNT 1 /* number of ciphertexts */
-#define GBFV 1 /* if using BFV instead, set to 0 (changes rotation function) */
+
+#define DBUG 
 
 /* Number of elements in an n x n (upper) diagonal matrix. */
 #define NELEMS_DIAG(n) (((n) * (n) - (n)) / 2 + (n))
@@ -105,8 +104,7 @@ int main(void)
     // printf("\nring modulus bits = %d\n", Rq->d);
     
     /* fhe parameters */
-    const unsigned int fhe_degree = 2048;
-    // const unsigned int fhe_degree = 12288;
+    const unsigned int fhe_degree = 12288;
     //const int_t fhe_modulus;
     //int_alloc(fhe_modulus, Rq->q->nlimbs);
     //int_set_i64(fhe_modulus, 2^54+1);
@@ -130,148 +128,44 @@ int main(void)
     // print_polyvec_element("First element of sk", sk_vec_polys, 0, 64);
 
     /* INIT ct0 */
-    // in this section, we flatten the ct0[][] 2D array to a large 1D array of polynomials
-    // Calculate total polynomials needed
-    size_t polys_per_ct = fhe_degree / proof_degree;
-    size_t total_polys = CT_COUNT * polys_per_ct;
-    POLYVEC_T(ct0_vec_polys, Rq, total_polys);
+    POLYVEC_T(ct0_vec_polys, Rq, fhe_degree/proof_degree);
     
-    // You can treat static_ct0 as a one-dimensional array in memory 
-    // since C stores arrays in row-major order. Cast it to a one-dimensional array as follows:
-    const int64_t *flat_static_ct0 = (const int64_t *)static_ct0;
-
-    size_t total_elements = CT_COUNT * fhe_degree;
-    size_t element_index = 0;
-
-    // flatten
-    // for (size_t i = 0; i < total_polys; i++) {
-    //   poly = polyvec_get_elem(ct0_vec_polys, i);
-    //   coeffs = poly_get_coeffvec(poly);
-    //   for (size_t j = 0; j < proof_degree; j++) {
-    //       if (element_index < total_elements) {
-    //           int64_t value = flat_static_ct0[element_index];
-    //           intvec_set_elem_i64(coeffs, j, value);
-    //           element_index++;
-    //       } else {
-    //           // Handle error: element_index exceeds total_elements
-    //           fprintf(stderr, "Error: element_index exceeds total_elements\n");
-    //           exit(1);
-    //       }
-    //   }
-    // }
-
-    for (size_t k = 0; k < CT_COUNT; k++) {
-      for (size_t i=0; i<(fhe_degree/proof_degree) ; i++) {
-          poly = polyvec_get_elem(ct0_vec_polys, k*polys_per_ct + i);
-          coeffs = poly_get_coeffvec (poly);
-          for (size_t j=0; j<proof_degree ; j++) {
-              intvec_set_elem_i64(coeffs,j,static_ct0[j+i*proof_degree]);
-              // printf("%d, %d, %d\n", k,i,j);
-          }
-      }
+    for (size_t i=0; i<(fhe_degree/proof_degree) ; i++) {
+        poly = polyvec_get_elem(ct0_vec_polys, i);
+        coeffs = poly_get_coeffvec (poly);
+        for (size_t j=0; j<proof_degree ; j++) {
+            intvec_set_elem_i64(coeffs,j,static_ct0[j+i*proof_degree]);
+            // printf("sk elem: %d\n", static_ct0[j+i*proof_degree]);
+        }
     }
-    // some manual tests:
-    // print_polyvec_element("First element of ct0", ct0_vec_polys, 0, 1);
-    // print_polyvec_element("Last element of ct0", ct0_vec_polys, ct0_vec_polys->nelems-1, 64);
-    // printf("\nNumber of polynomials in ct0_vec_polys is %d", ct0_vec_polys->nelems);
-    // printf("\nNumber of polynomials in ct0_vec_polys should be %d\n", total_polys);
-
-
+    // print_polyvec_element("First element of ct0", ct0_vec_polys, 0, 64);
 
     /* INIT ct1 */
-    // This is the same as ct0, so we need to flatten it
-    // size calculations
-    polys_per_ct = fhe_degree / proof_degree;
-    total_polys = CT_COUNT * polys_per_ct;
-    POLYVEC_T(ct1_vec_polys, Rq, total_polys);
-
-    // one-dimensional array in memory of C
-    const int64_t *flat_static_ct1 = (const int64_t *)static_ct1;
-
-    total_elements = CT_COUNT * fhe_degree;
-    element_index = 0;
-
-    // flatten
-    // for (size_t i = 0; i < total_polys; i++) {
-    //   poly = polyvec_get_elem(ct1_vec_polys, i);
-    //   coeffs = poly_get_coeffvec(poly);
-    //   for (size_t j = 0; j < proof_degree; j++) {
-    //       if (element_index < total_elements) {
-    //           int64_t value = flat_static_ct1[element_index];
-    //           intvec_set_elem_i64(coeffs, j, value);
-    //           element_index++;
-    //       } else {
-    //           // Handle error: element_index exceeds total_elements
-    //           fprintf(stderr, "Error: element_index exceeds total_elements\n");
-    //           exit(1);
-    //       }
-    //   }
-    // }
-    for (size_t k = 0; k < CT_COUNT; k++) {
-      for (size_t i=0; i<(fhe_degree/proof_degree) ; i++) {
-          poly = polyvec_get_elem(ct1_vec_polys, k*polys_per_ct + i);
-          coeffs = poly_get_coeffvec (poly);
-          for (size_t j=0; j<proof_degree ; j++) {
-              intvec_set_elem_i64(coeffs,j,static_ct1[j+i*proof_degree]);
-              // printf("sk elem: %d\n", static_ct0[j+i*proof_degree]);
-          }
-      }
+    POLYVEC_T(ct1_vec_polys, Rq, fhe_degree/proof_degree);
+    
+    for (size_t i=0; i<(fhe_degree/proof_degree) ; i++) {
+        poly = polyvec_get_elem(ct1_vec_polys, i);
+        coeffs = poly_get_coeffvec (poly);
+        for (size_t j=0; j<64 ; j++) {
+            intvec_set_elem_i64(coeffs,j,static_ct1[j+i*proof_degree]);
+            // printf("sk elem: %d\n", static_ct0[j+i*proof_degree]);
+        }
     }
-
-
-    // some manual tests:
-    // print_polyvec_element("First element of ct1", ct1_vec_polys, 0, 1);
-    // print_polyvec_element("First element of ct1", ct1_vec_polys, 32, 1);
-    // //print_polyvec_element("Last element of ct1", ct1_vec_polys, ct1_vec_polys->nelems-1, 64);
-    // printf("\nNumber of polynomials in ct1_vec_polys is %d", ct1_vec_polys->nelems);
-    // printf("\nNumber of polynomials in ct1_vec_polys should be %d\n", total_polys);
+    // print_polyvec_element("First element of ct1", ct1_vec_polys, 0, 64);
 
     /* INIT m_delta */
-    // This is the same as ct0, so we need to flatten it
-    // size calculations
-    size_t polys_per_mdelta = fhe_degree / proof_degree;
-    total_polys = CT_COUNT * polys_per_mdelta;
-    POLYVEC_T(mdelta_vec_polys, Rq, total_polys);
-
-    // one-dimensional array in memory of C
-    const int64_t *flat_static_mdelta = (const int64_t *)static_m_delta;
-
-    total_elements = CT_COUNT * fhe_degree;
-    element_index = 0;
-
-    // flatten
-    // for (size_t i = 0; i < total_polys; i++) {
-    //   poly = polyvec_get_elem(mdelta_vec_polys, i);
-    //   coeffs = poly_get_coeffvec(poly);
-    //   for (size_t j = 0; j < proof_degree; j++) {
-    //       if (element_index < total_elements) {
-    //           int64_t value = flat_static_mdelta[element_index];
-    //           intvec_set_elem_i64(coeffs, j, value);
-    //           element_index++;
-    //       } else {
-    //           // Handle error: element_index exceeds total_elements
-    //           fprintf(stderr, "Error: element_index exceeds total_elements\n");
-    //           exit(1);
-    //       }
-    //   }
-    // }
-
-    for (size_t k = 0; k < CT_COUNT; k++) {
-      for (size_t i=0; i<(fhe_degree/proof_degree) ; i++) {
-          poly = polyvec_get_elem(mdelta_vec_polys, k*polys_per_ct + i);
-          coeffs = poly_get_coeffvec (poly);
-          for (size_t j=0; j<proof_degree ; j++) {
-              intvec_set_elem_i64(coeffs,j,static_m_delta[j+i*proof_degree]);
-              // printf("sk elem: %d\n", static_ct0[j+i*proof_degree]);
-          }
-      }
+    POLYVEC_T(mdelta_vec_polys, Rq, fhe_degree/proof_degree);
+    
+    for (size_t i=0; i<(fhe_degree/proof_degree) ; i++) {
+        poly = polyvec_get_elem(mdelta_vec_polys, i);
+        coeffs = poly_get_coeffvec (poly);
+        for (size_t j=0; j<proof_degree ; j++) {
+            intvec_set_elem_i64(coeffs,j,static_m_delta[j+i*proof_degree]);
+            //if (i==0)
+            //    printf("sk elem: %d\n", static_m_delta[j+i*proof_degree]);
+        }
     }
-    // some manual tests:
-    // print_polyvec_element("First element of m_delta", mdelta_vec_polys, 0, 1);
-    // print_polyvec_element("Last element of m_delta", mdelta_vec_polys, mdelta_vec_polys->nelems-1, 64);
-    // printf("\nNumber of polynomials in mdelta_vec_polys is %d", mdelta_vec_polys->nelems);
-    // printf("\nNumber of polynomials in mdelta_vec_polys should be %d\n", total_polys);
-
+    // print_polyvec_element("First element of mdelta", mdelta_vec_polys, 0, 64);
 
 
 
@@ -413,12 +307,12 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     const unsigned int m1 = abdlop->m1;
     const unsigned int l = abdlop->l;
     const unsigned int nbounds = 1; // TODO: number of u vectors we want to proof are small - will change to 1
-    //const unsigned int nprime = ct0->nelems * CT_COUNT;
-    const unsigned int nprime = fhe_degree/d * CT_COUNT;
+    const unsigned int nprime = ct0->nelems;
 
     int_set_i64 (lo, -1);
     int_set_i64 (hi, 1);
     polyvec_urandom_bnd (s2, lo, hi, seed, dom++);
+    //polyvec_dump(s2);
 
     printf("ajtai size: %d, bdlop size: %d, lext:%d, lambda:%d\n", m1, l, abdlop->lext, lambda);
     printf("quad-many l: %d, quad-many lext:%d\n\n", params->quad_many->l, params->quad_many->lext);
@@ -465,13 +359,10 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     // printf("start u_v build\n");
     polyvec_t c0_m;
     polyvec_alloc(c0_m, Rq, ct0->nelems);
-    printf("\nct0->nelems: %d", ct0->nelems);
     polyvec_sub(c0_m, ct0, m_delta, 0);
-    printf("\nc0_m->nelems: %d", c0_m->nelems);
 
     // generate intvec with coeffs of ct0 - delta_m
     INTVEC_T(sum_tmp_vec, d * c0_m->nelems, Rq->q->nlimbs);
-    printf("\nsum_tmp_vec->nelems: %d\n", sum_tmp_vec->nelems);
     intvec_ptr sum_tmp = &sum_tmp_vec;
     for (i=0; i<c0_m->nelems; i++) {
         poly_tmp = polyvec_get_elem(c0_m, i); 
@@ -481,102 +372,102 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
         }
     }
     // intvec_dump(sum_tmp_vec);
-    //print_polyvec_element("element of vinh", c0_m_v, 31, 64);
-    //printf("sum_tmp nelems = %d\n", sum_tmp->nelems);
-    // print_polyvec_element("element of ct0", ct0, 60, 3);
-    // print_polyvec_element("element of m_delta", m_delta, 60, 3);
-    // printf("\nsum_tmp:\n");
-    // for (i=0; i<1; i++) {
-    //     printf("%lld ", intvec_get_elem_i64(sum_tmp, 60*d+2));
+    // print_polyvec_element("element of vinh", c0_m_v, 31, 64);
+    // printf("u_s nelems = %d\n", sum_tmp->nelems);
+    // for (i=0; i<d; i++) {
+    //     printf("%lld ", intvec_get_elem_i64(sum_tmp, i+31*d));
     // }
     // printf("\n\n");
 
-    // For each ct in ct1:
     // generate intvec with coeffs of ct1, do rotations and
     // dot product with u_s
-    // Calculate sizes (based on the paper):
-    polyvec_ptr ct1_ptr = &ct1;
-    poly_ptr first_ct1_ptr = polyvec_get_elem(ct1, 0);
-    size_t n = fhe_degree/d; //first_ct1_ptr->coeffs->nelems; // fhe_degree/proof_degree
-    size_t r = CT_COUNT;
-    printf("\nn: %d", n);
-    printf("\nr (CT_COUNT): %d\n", CT_COUNT);
-
-    // intvec_ptr rot_s;
-    polymat_t Ds;
-    // polymat_alloc (Ds, Rq, nprime*d, m1);
-    polymat_alloc (Ds, Rq, CT_COUNT*n*d, m1);
-    INTVEC_T(w_sk, CT_COUNT*d*n, Rq->q->nlimbs);
-    INTVEC_T(rot_s_vec, d * n, Rq->q->nlimbs);
+    INTVEC_T(rot_s_vec, d * c0_m->nelems, Rq->q->nlimbs);
     intvec_ptr rot_s = &rot_s_vec;
-    for (k=0; k<CT_COUNT; k++) {
 
-      // getting k-th ct1 coeffs
-      INTVEC_T(ct1_coeffs_vec, d * n, Rq->q->nlimbs);
-      intvec_ptr ct1_coeffs = &ct1_coeffs_vec;
-      for (i=0; i<n; i++) {
-          poly_tmp = polyvec_get_elem(ct1, k*n + i);     
-          coeffs = poly_get_coeffvec (poly_tmp);
-          for (j=0; j<d; j++) {
-              intvec_set_elem(ct1_coeffs, i*d+j, intvec_get_elem(coeffs, j));
-          }
-      }
-
-      INTVEC_T(ct1_coeffs_vec2, d * n, Rq->q->nlimbs);
-      intvec_ptr ct1_coeffs2 = &ct1_coeffs_vec2;
-
-      
-      //INTMAT_T (Ds, 2047, 2047, Rq->q->nlimbs);
-      intvec_t rot_coeffvec;
-      poly_ptr Ds_elem;
-      // printf("start u_v build\n");
-
-
-      // rotating coeffs of k-th ct1 and multiplying with u_s
-      intvec_reverse(ct1_coeffs, ct1_coeffs);
-      INT_T (new, 2 * Rq->q->nlimbs);
-      for (i=0; i<(d * n); i++) {
-          intvec_lrot(ct1_coeffs2, ct1_coeffs, i+1);
-          intvec_neg_self(ct1_coeffs2);
-
-          for (j=0; j<(ct1_coeffs2->nelems)/d; j++) {
-              intvec_get_subvec (rot_coeffvec, ct1_coeffs2, 0+j*d, d, 1); // XXX correct
-              Ds_elem = polymat_get_elem(Ds, k*(n*d)+i, j);
-              poly_set_coeffvec(Ds_elem, rot_coeffvec);
-          }
-          //printf("%lld ", intvec_get_elem_i64(ct1_coeffs2, i));
-          // INTVEC_T(fake_u_s, d * sk->nelems, Rq->q->nlimbs);
-          // intvec_set_ones(fake_u_s);
-          // intvec_dot(new, ct1_coeffs2, fake_u_s);
-          intvec_dot(new, ct1_coeffs2, u_s); // TO UNCOMMENT
-          // do we need to do mod and redc?
-          //printf("new1: %lld\n", int_get_i64(new));
-          int_mod(new, new, Rq->q);
-          //printf("new2: %lld\n", int_get_i64(new));
-          int_redc(new, new, Rq->q);
-          //printf("new3: %lld\n", int_get_i64(new));
-          intvec_set_elem(rot_s, i, new);
-
-          //printf("%lld ", intvec_get_elem_i64(ct1_coeffs2, i));
-      }
-
-      for (i=0; i<(n*d); i++) {
-        intvec_set_elem(w_sk, k*(d*n) + i, intvec_get_elem(rot_s, i));
-      }
+    // getting ct1 coeffs
+    INTVEC_T(ct1_coeffs_vec, d * c0_m->nelems, Rq->q->nlimbs);
+    intvec_ptr ct1_coeffs = &ct1_coeffs_vec;
+    for (i=0; i<ct1->nelems; i++) {
+        poly_tmp = polyvec_get_elem(ct1, i);     
+        coeffs = poly_get_coeffvec (poly_tmp);
+        for (j=0; j<d; j++) {
+            intvec_set_elem(ct1_coeffs, i*d+j, intvec_get_elem(coeffs, j));
+        }
     }
+    // print_polyvec_element("element of ct1", ct1, 31, 64);
+    // for (i=0; i<d; i++) {
+    //     printf("%lld ", intvec_get_elem_i64(ct1_coeffs, i+31*d));
+    // }
+    // printf("\n\n");
 
+    //test_lrot(Rq);
 
-    intvec_add(u_v, w_sk, sum_tmp);
+    INTVEC_T(ct1_coeffs_vec2, d * c0_m->nelems, Rq->q->nlimbs);
+    intvec_ptr ct1_coeffs2 = &ct1_coeffs_vec2;
+
+    polymat_t Ds;
+    polymat_alloc (Ds, Rq, nprime*d, m1);
+    //INTMAT_T (Ds, 2047, 2047, Rq->q->nlimbs);
+    intvec_t rot_coeffvec;
+    poly_ptr Ds_elem;
+    // printf("start u_v build\n");
+
+    // rotating coeffs of ct1 and multiplying with u_s
+    intvec_reverse(ct1_coeffs, ct1_coeffs);
+    INT_T (new, 2 * Rq->q->nlimbs);
+    for (i=0; i<ct1_coeffs2->nelems; i++) {
+        intvec_lrot(ct1_coeffs2, ct1_coeffs, i+1);
+        intvec_neg_self(ct1_coeffs2);
+
+        for (j=0; j<(ct1_coeffs2->nelems)/d; j++) {
+            intvec_get_subvec (rot_coeffvec, ct1_coeffs2, 0+j*d, d, 1); // XXX correct
+            Ds_elem = polymat_get_elem(Ds, i, j);
+            poly_set_coeffvec(Ds_elem, rot_coeffvec);
+        }
+
+        //printf("%lld ", intvec_get_elem_i64(ct1_coeffs2, i));
+        // INTVEC_T(fake_u_s, d * sk->nelems, Rq->q->nlimbs);
+        // intvec_set_ones(fake_u_s);
+        // intvec_dot(new, ct1_coeffs2, fake_u_s);
+        intvec_dot(new, ct1_coeffs2, u_s); // TO UNCOMMENT
+
+        // do we need to do mod and redc?
+        //printf("new1: %lld\n", int_get_i64(new));
+        int_mod(new, new, Rq->q);
+        //printf("new2: %lld\n", int_get_i64(new));
+        int_redc(new, new, Rq->q);
+        //printf("new3: %lld\n", int_get_i64(new));
+        intvec_set_elem(rot_s, i, new);
+
+        //printf("%lld ", intvec_get_elem_i64(ct1_coeffs2, i));
+    }
     // printf("dumping w_sk\n");
-    // coeff = intvec_get_elem(w_sk, 0);
+    // coeff = intvec_get_elem(ct1_coeffs2, 0);
     // int_dump(coeff);
-    // coeff = intvec_get_elem(w_sk, n*d+0);
+    // coeff = intvec_get_elem(rot_s, n*d+0);
     // int_dump(coeff);
 
-    // printf("dumping u_v\n");
+    // printf("dumping Ds\n");
+    // poly = polymat_get_elem(Ds, nprime*d-1, 0);
+    // poly_dump(poly);
+    // printf("\n\n");
+    //     for (i=rot_s->nelems - d; i<rot_s->nelems; i++) {
+    //     printf("%lld ", intvec_get_elem_i64(rot_s, i));
+    // }
+    // printf("\n\n");
+    // printf("rot_s nelems: %d\n", rot_s->nelems);
+
+    // printf("ct1_1: %lld \n", intvec_get_elem_i64(ct1_coeffs, 0));
+    // printf("ct1_2: %lld \n", intvec_get_elem_i64(ct1_coeffs2, ct1_coeffs->nelems - 1));
+
+    // adding other parts of u_v
+    // intvec_set_zero(sum_tmp);
+    intvec_add(u_v, rot_s, sum_tmp); 
+    // printf("\n\n");
     // for (i=0; i<u_v->nelems; i++)
     //     printf("%d ", intvec_get_elem_i64(u_v, i));
     // printf("\n");
+
 
     printf("finished u_v build\n");
 
@@ -1939,7 +1830,7 @@ __schwartz_zippel_accumulate_z (spolymat_ptr R2i[], spolyvec_ptr r1i[],
   poly_ptr r0tptr[1];
   int_ptr chal, acc;
   polymat_t mat, vRDs, vRDm; // vRpol;
-  // polyvec_t subv1, subv2;
+  polyvec_t subv1, subv2;
   int_ptr coeff1, coeff2;
   poly_ptr poly, poly2, poly3;
   int_srcptr inv2 = Rq->inv2;
@@ -1953,6 +1844,7 @@ __schwartz_zippel_accumulate_z (spolymat_ptr R2i[], spolyvec_ptr r1i[],
   INTMAT_T (vR, lambda, nprime * d, 2 * Rq->q->nlimbs);
   INTVEC_T (vRu, lambda, 2 * Rq->q->nlimbs);
   intmat_urandom (V, q, log2q, seed, dom);
+
 
   // for (i=0; i<V->nrows; i++) {
   //   for (j=0; j<V->ncols; j++) {
@@ -2003,10 +1895,6 @@ __schwartz_zippel_accumulate_z (spolymat_ptr R2i[], spolyvec_ptr r1i[],
     }
   //printf("\n");
 
-// originally v*R, then v*R * o(Ds)
-// o(v*R * Ds)
-// v * o(R*Ds)
-
 
   polymat_t RDs;
   polymat_alloc (RDs, Rq, 256, m1);
@@ -2016,13 +1904,29 @@ __schwartz_zippel_accumulate_z (spolymat_ptr R2i[], spolyvec_ptr r1i[],
   INTVEC_T (acc1, d, int_get_nlimbs (Rq->q));
 
 
+
+  // printf("building Ds\n");
+  // intmat_t RDs_;
+  // intmat_alloc(RDs_, 256, m1*d, q->nlimbs);
+  // intmat_t Ds_;
+  // intmat_alloc(Ds_, nprime*d, m1*d, q->nlimbs);
+  // for (i=0; i<Ds->nrows; i++) {
+  //   intmat_get_row(row1, Ds_, i);
+  //   for (j=0; j<Ds->ncols; j++) {
+  //     poly = polymat_get_elem (Ds, i, j);
+  //     coeffvec = poly_get_coeffvec(poly);
+  //     intvec_get_subvec(subv1, row1, j*d, d, 1);
+  //     intvec_set(subv1, coeffvec);
+  //   }
+  // }
+
   intmat_set_zero (vR);
   // vR is lambda * nprime*d matrix where challenge k out of lambda multiplies line k of matrix R
-  // printf("  - building vR\n");
-  // #region building vR + vR_
+  printf("  - building vR and RDs\n");
+  // #region building vR + vR_ + RDs
   for (i = 0; i < 256; i++)
     {
-      //printf("row %d\n", i);
+      // printf("row %d\n", i);
       _expand_R_i2 (Rprimei, nprime * d, i, seed);
 
       for (k = 0; k < lambda; k++)
@@ -2046,12 +1950,57 @@ __schwartz_zippel_accumulate_z (spolymat_ptr R2i[], spolyvec_ptr r1i[],
                 }
             }
         }
+
+      for (k = 0; k < Ds->ncols; k++) {
+        // acc = intmat_get_elem(RDs_, i, k);
+        // intmat_get_col(row1, Ds_, k);
+        
+        poly = polymat_get_elem (RDs, i, k);
+        poly_set_zero(poly);
+        
+        for (j = 0; j < Ds->nrows; j++) {
+          if (Rprimei[j] == 0) {}
+          else {
+            // coeff1 = intvec_get_elem(row1, j);
+            // int_set(coeff2, coeff1);
+            // int_mul_sgn_self(coeff2, Rprimei[j]);
+            // int_add(acc, acc, coeff2);
+            // if (k==0 && i==0) {
+            //   printf("coeff from Ds_ and acc\n");
+            //   int_dump(coeff1);
+            //   int_dump(acc);
+            // }
+        
+            poly2 = polymat_get_elem (Ds, j, k);
+            coeffvec = poly_get_coeffvec(poly2);
+            intvec_set(acc1, coeffvec);
+            intvec_mul_sgn_self(acc1, Rprimei[j]);
+            poly_set_coeffvec(newpol, acc1);
+            poly_add(poly, poly, newpol, 0); 
+          }         
+        }
+      }
     }
-  // printf("finished building vR\n");
+  // printf("finished building vR and RDs\n");
+
+  // printf("creating RDs\n");
+  // for (k = 0; k < 256; k++)
+  //   {
+  //     for (i = 0; i < m1; i++)
+  //       {
+  //         poly = polymat_get_elem (RDs, k, i);
+  //         for (j = 0; j < d; j++)
+  //           {
+  //             coeff1 = intmat_get_elem (RDs_, k, i * d + j);
+  //             coeff2 = poly_get_coeff (poly, j);
+
+  //             int_set (coeff2, coeff1);
+  //           }
+  //       }
+  //   }
 
 
 
-  printf("  - computing vR_\n");
   // vR_ is same as vR but with correct number of limbs (after mod q)
   _MAT_FOREACH_ELEM (vR, i, j)
   {
@@ -2063,7 +2012,6 @@ __schwartz_zippel_accumulate_z (spolymat_ptr R2i[], spolyvec_ptr r1i[],
 
 
   // #region vRu
-  printf("  - computing vRu, vR_cols=%d, u_rows=%d\n", vR_->ncols, u_->nelems);
   // generates u_, intvec with coefficients of elements in u.
   // vRu is intvec of lambda entries, vRu = vR_ * u_
   if (u_ != NULL)
@@ -2092,37 +2040,31 @@ __schwartz_zippel_accumulate_z (spolymat_ptr R2i[], spolyvec_ptr r1i[],
   // #endregion
 
 
-  // #region vRDs - current version
-  // building vRDs and vRDm 
-  // consists of the ring elements from multiplying the integers in vR_ and Ds/Dm
-  printf("  - building vRDs\n");
-  //printf("  - computing o(RDs)\n");
-  polymat_t ovRDs;
-  polymat_alloc(ovRDs, Rq, vRDs->nrows, vRDs->ncols);
-  polymat_auto (ovRDs, vRDs);
-  if (Ds != NULL) {
-    for (k = 0; k < lambda; k++) {
-        printf("lambda = %d\n", k);
-        intmat_get_row(row1, vR_, k);
+  // #region vRDs
+  // printf("  - computing o(RDs)\n");
+  polymat_t oRDs;
+  polymat_alloc(oRDs, Rq, RDs->nrows, RDs->ncols);
+  polymat_auto (oRDs, RDs);
 
-        for (i = 0; i < Ds->ncols; i++) {
-            poly = polymat_get_elem (vRDs, k, i);
-            poly_set_zero(poly);
+  // printf("  - computing vRDs\n");
+  for (k = 0; k < lambda; k++) {
+    intmat_get_row(row1, V, k);
 
-            for (j = 0; j < Ds->nrows; j++) {
-              poly2 = polymat_get_elem (Ds, j, i);
-              coeff1 = intvec_get_elem(row1, j);
-              poly_addscale(poly, coeff1, poly2, 0);
-            }
-        }
+    for (i = 0; i < oRDs->ncols; i++) {
+      poly = polymat_get_elem (vRDs, k, i);
+      poly_set_zero(poly);
+
+      for (j = 0; j < oRDs->nrows; j++) {
+        poly2 = polymat_get_elem (oRDs, j, i);
+        coeff1 = intvec_get_elem(row1, j);
+        poly_addscale(poly, coeff1, poly2, 0);
+      }
     }
-    printf("  - computing o(vRDs)\n");
-    polymat_auto (ovRDs, vRDs);
-    // polymat_lrot (vRDs, vRDs, d / 2); // * X^(d/2)  XXX correct
   }
+  // #endregion
 
 
-  printf("  - building vRDm (old version)\n");
+  //printf("  - building vRDm (old version)\n");
   if (l > 0 && Dm != NULL) {
     for (k = 0; k < lambda; k++) {
         intmat_get_row(row1, vR_, k);
@@ -2142,6 +2084,89 @@ __schwartz_zippel_accumulate_z (spolymat_ptr R2i[], spolyvec_ptr r1i[],
     polymat_auto (vRDm, vRDm);
     // polymat_lrot (vRDm, vRDm, d / 2); // * X^(d/2)  XXX correct
   }
+
+
+  // #region original vRD version (using oDs, oDm)
+  // vRpol is polymat lambda * nprime
+  // consists of the ring elements obtained from the coefficients in vR_
+  // printf("  - building vRpol_\n");
+  // for (k = 0; k < lambda; k++)
+  //   {
+  //     for (i = 0; i < nprime; i++)
+  //       {
+  //         poly = polymat_get_elem (vRpol, k, i);
+  //         for (j = 0; j < d; j++)
+  //           {
+  //             coeff1 = intmat_get_elem (vR_, k, i * d + j);
+  //             coeff2 = poly_get_coeff (poly, j);
+
+  //             int_set (coeff2, coeff1);
+  //           }
+  //       }
+  //   }
+
+  // vRDs is lambda * m1 polymat
+  // each row is the dot product of a row of vRpol with oDs
+  // at the end, the whole matrix is multiplied by X^(d/2)
+  // printf("  - building vRDs_\n");
+  // if (Ds != NULL)
+  //   {
+  //     // XXXpolymat_get_submat (subm, mat, 0, 0, nprime, m1, 1, 1);
+  //     // XXXpolymat_auto (subm, Ds);
+
+  //     for (k = 0; k < lambda; k++)
+  //       {
+  //         polymat_get_row (subv1, vRpol, k);
+  //         polymat_get_row (subv2, vRDs, k); // correct
+
+  //         polyvec_mul2 (subv2, subv1, oDs);
+  //       }
+
+  //     polymat_lrot (vRDs, vRDs, d / 2); // * X^(d/2)  XXX correct
+  //   }
+
+  // same as vRDs but with Dm
+  // printf("  - building vRDm_\n");
+  // if (l > 0 && Dm != NULL)
+  //   {
+  //     // XXXpolymat_get_submat (subm, mat, 0, 0, nprime, l, 1, 1);
+  //     // XXXpolymat_auto (subm, Dm);
+
+  //     for (k = 0; k < lambda; k++)
+  //       {
+  //         polymat_get_row (subv1, vRpol, k);
+  //         polymat_get_row (subv2, vRDm, k); // correct
+
+  //         polyvec_mul2 (subv2, subv1, oDm);
+  //       }
+
+  //     polymat_lrot (vRDm, vRDm, d / 2); // * X^(d/2)  XXX correct
+  //   }
+  // #endregion
+
+  // #region vRDs first try 
+  // building vRDs and vRDm 
+  // consists of the ring elements from multiplying the integers in vR_ and Ds/Dm
+  // printf("  - building vRDs\n");
+  // if (Ds != NULL) {
+  //   for (k = 0; k < lambda; k++) {
+  //       intmat_get_row(row1, vR_, k);
+
+  //       for (i = 0; i < Ds->ncols; i++) {
+  //           poly = polymat_get_elem (vRDs, k, i);
+  //           poly_set_zero(poly);
+
+  //           for (j = 0; j < Ds->nrows; j++) {
+  //             poly2 = polymat_get_elem (Ds, j, i);
+  //             coeff1 = intvec_get_elem(row1, j);
+  //             poly_addscale(poly, coeff1, poly2, 0);
+  //           }
+  //       }
+  //   }
+  //   printf("  - computing o(vRDs)\n");
+  //   polymat_auto (vRDs, vRDs);
+  //   // polymat_lrot (vRDs, vRDs, d / 2); // * X^(d/2)  XXX correct
+  // }
   // #endregion
 
 
@@ -2163,7 +2188,7 @@ __schwartz_zippel_accumulate_z (spolymat_ptr R2i[], spolyvec_ptr r1i[],
           poly = spolymat_insert_elem (R2t, is1 + 2 * i, ibeta);
           poly2 = spolymat_insert_elem (R2t, is1 + 2 * i, ibeta + 1);
 
-          poly3 = polymat_get_elem (ovRDs, k, i);
+          poly3 = polymat_get_elem (vRDs, k, i);
           poly_set (poly2, poly3);
 
           poly_scale (poly2, inv2, poly2);
