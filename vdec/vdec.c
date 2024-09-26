@@ -12,6 +12,7 @@
 //#include "vdec_ct_60bits.h"
 #include "vdec_ct_gbfv_60bits.h"
 #include <mpfr.h>
+#include <sys/time.h>
 
 #define N 1 /* number of quadratic equations */
 #define M 1 /* number of quadratic eval equations */
@@ -2324,26 +2325,42 @@ __schwartz_zippel_accumulate_z (spolymat_ptr R2i[], spolyvec_ptr r1i[],
   polymat_t ovRDs;
   polymat_alloc(ovRDs, Rq, vRDs->nrows, vRDs->ncols);
   polymat_auto (ovRDs, vRDs);
+  
+  struct timeval start, end;
+  long seconds, useconds;
+  double wall_time;
+  gettimeofday(&start, NULL);  // Start timing
+
   if (Ds != NULL) {
     for (k = 0; k < lambda; k++) {
         printf("lambda = %d\n", k);
-        intmat_get_row(row1, vR_, k);
+        intvec_t row11;
+        intmat_get_row(row11, vR_, k);
 
+        #pragma omp parallel for private(j) shared(vRDs, Ds, row11)
         for (i = 0; i < Ds->ncols; i++) {
-            poly = polymat_get_elem (vRDs, k, i);
-            poly_set_zero(poly);
-
-            for (j = 0; j < Ds->nrows; j++) {
-              poly2 = polymat_get_elem (Ds, j, i);
-              coeff1 = intvec_get_elem(row1, j);
-              poly_addscale(poly, coeff1, poly2, 0);
-            }
+          // printf("Hello world!! from: %d, value:%d\n", omp_get_thread_num(), k);
+        
+          poly_ptr polyy = polymat_get_elem (vRDs, k, i);
+          poly_set_zero(polyy);
+          for (j = 0; j < Ds->nrows; j++) {
+            poly_ptr poly22 = polymat_get_elem (Ds, j, i);
+            int_ptr coeff11 = intvec_get_elem(row11, j);
+            poly_addscale(polyy, coeff11, poly22, 0);
+          }
         }
     }
     printf("  - computing o(vRDs)\n");
     polymat_auto (ovRDs, vRDs);
     // polymat_lrot (vRDs, vRDs, d / 2); // * X^(d/2)  XXX correct
   }
+
+  gettimeofday(&end, NULL);  // End timing
+  // Compute the time difference in microseconds
+  seconds  = end.tv_sec  - start.tv_sec;
+  useconds = end.tv_usec - start.tv_usec;
+  wall_time = seconds + useconds/1e6;  // Convert to seconds
+  printf(" + (lambda & ovRDs): execution time: %f seconds\n", wall_time);
 
 
   printf("  - building vRDm (old version)\n");

@@ -8,6 +8,14 @@ ADD_CPPFLAGS = -DNDEBUG
 CPPFLAGS += $(ADD_CPPFLAGS)
 LIBS = -lm $(HEXL_DIR)/build/hexl/lib64/libhexl.a -lstdc++
 
+#========
+# OpenMP
+#========
+OPENMP_FLAGS = -fopenmp
+CFLAGS_VDEC = $(CFLAGS) $(OPENMP_FLAGS)
+
+#========
+
 # =======================================
 # Proof of decryption
 # =======================================
@@ -682,7 +690,7 @@ clean:
 # =======================================
 # Target for vdec executable
 vdec: $(VDEC_SRC) lazer.h liblazer.a
-	$(CC) $(CPPFLAGS) $(CFLAGS) -I. -I$(VDEC_DIR) -o $(VDEC_DIR)/vdec $(VDEC_SRC) liblazer.a $(LIBS)
-
+	$(CC) $(CPPFLAGS) $(CFLAGS_VDEC) -I. -I$(VDEC_DIR) -o $(VDEC_DIR)/vdec $(VDEC_SRC) liblazer.a $(LIBS) $(OPENMP_FLAGS)
+#   $(CC) $(CPPFLAGS) $(CFLAGS) -I. -I$(VDEC_DIR) -o $(VDEC_DIR)/vdec $(VDEC_SRC) liblazer.a $(LIBS)
 .PHONY: vdec
 # =======================================
