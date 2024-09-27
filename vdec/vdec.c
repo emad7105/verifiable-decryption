@@ -1189,12 +1189,12 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     // // int_dump(params->Bz4);
     // printf("--> zv bound verification result: %d\n", b);
 
-    INT_T (l2, int_get_nlimbs (Rq->q));
+    INT_T (l2, 2*int_get_nlimbs (Rq->q));
     polyvec_fromcrt (zv);
     polyvec_l2sqr (l2, zv);
     b = (int_le (l2, params->Bz4));
-    // int_dump(linf);
-    // int_dump(params->Bz4);
+    int_dump(l2);
+    int_dump(params->Bz4);
     printf("--> zv bound verification result: %d\n", b);
 
     // int b1 = 1, b2 = 1;
