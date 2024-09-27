@@ -16,7 +16,7 @@
 
 #define N 1 /* number of quadratic equations */
 #define M 1 /* number of quadratic eval equations */
-#define CT_COUNT 2 /* number of ciphertexts */
+#define CT_COUNT 1 /* number of ciphertexts */
 #define GBFV 1 /* if using BFV instead, set to 0 (changes rotation function) */
 #define DEGREE 12288 /* fhe degree */
 //#define DEGREE 2048
@@ -355,9 +355,9 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
                           polyvec_t sk, polyvec_t ct0, polyvec_t ct1, 
                           polyvec_t m_delta, unsigned int fhe_degree)
 {
-  struct timeval start_proof, end_proof;
-  long seconds_proof, useconds_proof;
-  double wall_time_proof;
+  struct timeval start_proof, end_proof, start_rot, end_rot;
+  long seconds_proof, useconds_proof, seconds_rot, useconds_rot;
+  double wall_time_proof, wall_time_rot;
   gettimeofday(&start_proof, NULL);  // Start timing
     /************************************************************************/
     /*                                                                      */
@@ -450,8 +450,11 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
 
 
     // build u vector - u_v (and temporary u_s = sk in coefficient form)
-    INTVEC_T(u_v_vec, d * ct0->nelems, Rq->q->nlimbs);
-    INTVEC_T(u_s_vec, d * sk->nelems, Rq->q->nlimbs);
+    intvec_t u_v_vec, u_s_vec;
+    intvec_alloc(u_v_vec, d * ct0->nelems, Rq->q->nlimbs);
+    intvec_alloc(u_s_vec, d * sk->nelems, Rq->q->nlimbs);
+    //INTVEC_T(u_v_vec, d * ct0->nelems, Rq->q->nlimbs);
+    //INTVEC_T(u_s_vec, d * sk->nelems, Rq->q->nlimbs);
     intvec_ptr u_v = &u_v_vec;
     intvec_ptr u_s = &u_s_vec;
 
@@ -476,7 +479,9 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     printf("\nc0_m->nelems: %d", c0_m->nelems);
 
     // generate intvec with coeffs of ct0 - delta_m
-    INTVEC_T(sum_tmp_vec, d * c0_m->nelems, Rq->q->nlimbs);
+    intvec_t sum_tmp_vec;
+    intvec_alloc(sum_tmp_vec, d * c0_m->nelems, Rq->q->nlimbs);
+    // INTVEC_T(sum_tmp_vec, d * c0_m->nelems, Rq->q->nlimbs);
     printf("\nsum_tmp_vec->nelems: %d\n", sum_tmp_vec->nelems);
     intvec_ptr sum_tmp = &sum_tmp_vec;
     for (i=0; i<c0_m->nelems; i++) {
@@ -510,12 +515,16 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
 
     polymat_t Ds;
     polymat_alloc (Ds, Rq, CT_COUNT*n*d, m1);
-    INTVEC_T(w_sk, CT_COUNT*d*n, Rq->q->nlimbs);
-    INTVEC_T(rot_s_vec, d * n, Rq->q->nlimbs);
+
+    intvec_t w_sk, rot_s_vec;
+    intvec_alloc(w_sk, CT_COUNT*d*n, Rq->q->nlimbs);
+    intvec_alloc(rot_s_vec, d * n, Rq->q->nlimbs);
+    // INTVEC_T(w_sk, CT_COUNT*d*n, Rq->q->nlimbs);
+    // INTVEC_T(rot_s_vec, d * n, Rq->q->nlimbs);
     intvec_ptr rot_s = &rot_s_vec;
 
 
-
+    gettimeofday(&start_rot, NULL);  // Start timing
     for (k=0; k<CT_COUNT; k++) {
       // getting k-th ct1 coeffs
       INTVEC_T(ct1_coeffs_vec, d * n, Rq->q->nlimbs);
@@ -537,6 +546,12 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
         intmat_t Ds_coeffs_vec;
         intmat_alloc(Ds_coeffs_vec, fhe_degree, m1*d, Rq->q->nlimbs);
         intmat_ptr Ds_coeffs = &Ds_coeffs_vec;
+
+        // gbfv_rot_row(ct1_coeffs2, ct1_coeffs, 0, Rq);
+        // for (i=0; i<10; i++)
+        //   printf("%lld ", intvec_get_elem_i64(ct1_coeffs2, i));
+        // printf("\n\n");
+
         gbfv_rot(Ds_coeffs, ct1_coeffs, Rq);
 
         // intmat_get_col(ct1_coeffs2, Ds_coeffs, 0);
@@ -552,10 +567,16 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
         //   printf("%lld ", intvec_get_elem_i64(ct1_coeffs2, i));
         // printf("\n\n");
 
+        //gbfv_rot_row(ct1_coeffs2, ct1_coeffs, 0, Rq);
+        // for (i=0; i<10; i++)
+        //   printf("%lld ", intvec_get_elem_i64(ct1_coeffs2, i));
+        // printf("\n\n");
+
         // intmat_get_row(ct1_coeffs2, Ds_coeffs, 0);
         // for (i=0; i<10; i++)
         //   printf("%lld ", intvec_get_elem_i64(ct1_coeffs2, i));
         // printf("\n\n");
+    
 
         intvec_t rot_coeffvec;
         poly_ptr Ds_elem;
@@ -563,6 +584,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
         INT_T (new, 2 * Rq->q->nlimbs);
         for (i=0; i<(d * n); i++) {
             intmat_get_row(ct1_coeffs2, Ds_coeffs, i);
+            // gbfv_rot_row(ct1_coeffs2, ct1_coeffs, i, Rq); substitute previous line with this once function works.
             for (j=0; j<(ct1_coeffs2->nelems)/d; j++) {
                 intvec_get_subvec (rot_coeffvec, ct1_coeffs2, 0+j*d, d, 1); // XXX correct
                 Ds_elem = polymat_get_elem(Ds, k*(n*d)+i, j);
@@ -617,6 +639,13 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
         intvec_set_elem(w_sk, k*(d*n) + i, intvec_get_elem(rot_s, i));
       }
     }
+    gettimeofday(&end_rot, NULL);  // End timing
+    // Compute the time difference in microseconds
+    seconds_rot  = end_rot.tv_sec  - start_rot.tv_sec;
+    useconds_rot = end_rot.tv_usec - start_rot.tv_usec;
+    wall_time_rot = seconds_rot + useconds_rot/1e6;  // Convert to seconds
+    printf(" ---------> (Rotations and w_sk): execution time: %f seconds\n", wall_time_rot);
+
 
     intvec_add(u_v, w_sk, sum_tmp);
     // printf("dumping w_sk\n");
@@ -1193,8 +1222,8 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     polyvec_fromcrt (zv);
     polyvec_l2sqr (l2, zv);
     b = (int_le (l2, params->Bz4));
-    int_dump(l2);
-    int_dump(params->Bz4);
+    // int_dump(l2);
+    // int_dump(params->Bz4);
     printf("--> zv bound verification result: %d\n", b);
 
     // int b1 = 1, b2 = 1;
@@ -1553,7 +1582,9 @@ void gbfv_rot (intmat_t r, const intvec_t c1, const polyring_t ring) {
     intmat_t tmp_mat;
     intmat_alloc(tmp_mat, r->nrows, r->ncols, ring->q->nlimbs);
 
-    INTVEC_T(colvec, r->nrows, ring->q->nlimbs);
+    intvec_t colvec;
+    intvec_alloc(colvec, r->nrows, ring->q->nlimbs);
+    //INTVEC_T(colvec, r->nrows, ring->q->nlimbs);
     intvec_ptr col = &colvec;
 
     intmat_get_col(col, tmp_mat, 0);
@@ -1567,10 +1598,14 @@ void gbfv_rot (intmat_t r, const intvec_t c1, const polyring_t ring) {
 
 
     // prepare materials from polynomial modulus
-    INTVEC_T(my_vector_rotated, r->nrows, ring->q->nlimbs);
+    intvec_t my_vector_rotated;
+    intvec_alloc(my_vector_rotated, r->nrows, ring->q->nlimbs);
+    //INTVEC_T(my_vector_rotated, r->nrows, ring->q->nlimbs);
     intvec_ptr my_vector_rotated_ptr = &my_vector_rotated;
 
-    INTVEC_T(previous_rotated, r->nrows, ring->q->nlimbs);
+    intvec_t previous_rotated;
+    intvec_alloc(previous_rotated, r->nrows, ring->q->nlimbs);
+    //INTVEC_T(previous_rotated, r->nrows, ring->q->nlimbs);
     intvec_ptr previous_rotated_ptr = &previous_rotated;
 
     //intvec_reverse(my_vector, my_vector);
@@ -1612,6 +1647,99 @@ void gbfv_rot (intmat_t r, const intvec_t c1, const polyring_t ring) {
     printf("- Building rot ended.\n");
 }
 
+
+void gbfv_rot_row (intvec_t row, const intvec_t c1, unsigned int n, const polyring_t ring) {
+    printf("\n- Building GBFV row ...\n");
+
+    intvec_t tmp_mat;
+    intvec_alloc(tmp_mat, row->nelems, ring->q->nlimbs);
+
+    intvec_t colvec;
+    intvec_alloc(colvec, row->nelems, ring->q->nlimbs);
+    //INTVEC_T(colvec, r->nrows, ring->q->nlimbs);
+    intvec_ptr col = &colvec;
+
+    int_ptr coeff, coeff2;
+    coeff = intvec_get_elem(row, 0);
+    coeff2 = intvec_get_elem(c1, n);
+    int_set(coeff, coeff2);
+
+    // prepare materials from polynomial modulus
+    int offsets[] = {1024, 3072, 4096, 6144, 8192, 9216, 11264};
+    int signs[] = {1, -1, -1, 1, -1, -1, 1};
+    // int offsets[] = {0, 0, 0, 0, 0, 0, 0};
+    // int signs[] = {1, 0, 0, 0, 0, 0, 0};
+
+    printf("prepare materials\n");
+    // prepare materials from polynomial modulus
+    intvec_t my_vector_rotated;
+    intvec_alloc(my_vector_rotated, row->nelems, ring->q->nlimbs);
+    //INTVEC_T(my_vector_rotated, r->nrows, ring->q->nlimbs);
+    intvec_ptr my_vector_rotated_ptr = &my_vector_rotated;
+
+    intvec_t previous_rotated;
+    intvec_alloc(previous_rotated, row->nelems, ring->q->nlimbs);
+    //INTVEC_T(previous_rotated, r->nrows, ring->q->nlimbs);
+    intvec_ptr previous_rotated_ptr = &previous_rotated;
+
+    //intvec_reverse(my_vector, my_vector);
+    int_ptr multiplier, coeff1;
+    INT_T (new, 2*ring->q->nlimbs);
+    for (int i=0; i<my_vector_rotated_ptr->nelems-1; i++) {
+        //printf("i = %d\n", i);
+        multiplier = intvec_get_elem(my_vector_rotated, 0);
+        //int_dump(multiplier);
+        //intmat_get_col(previous_rotated, tmp_mat, i);
+
+        if (i == 0) {
+          intvec_set(previous_rotated, c1);
+        }
+        else
+          intvec_set(previous_rotated, col);
+
+        // if (i < 4) {
+        // for (int j=0; j<10; j++)
+        //   printf("%lld ", intvec_get_elem_i64(col, j));
+        // printf("\n");
+        // }
+        // if (i < 4) {
+        // for (int j=0; j<10; j++)
+        //   printf("%lld ", intvec_get_elem_i64(previous_rotated, j));
+        // printf("\n\n");
+        // }
+
+        intvec_lrot(my_vector_rotated_ptr, previous_rotated, 1);
+        //int_dump(multiplier);
+
+        for (int j=0; j<sizeof(signs)/sizeof(signs[0]); j++) {
+          //if (signs[j] == 1 || signs[j] == -1) {
+          // printf("i,j = %d, %d\n", i, j);
+          coeff1 = intvec_get_elem(my_vector_rotated_ptr, offsets[j]);
+          //int_dump(coeff1);
+          int_set(new, multiplier);
+          int_mul_sgn_self(new, signs[j]);
+          //int_dump(coeff2);
+          int_add(coeff1, coeff1, new);
+          // int_mod(coeff1, coeff1, ring->q);
+          // int_redc(coeff1, coeff1, ring->q);
+          //}
+        }
+        //intvec_dump(my_vector_rotated);
+
+        coeff = intvec_get_elem(tmp_mat, i+1);
+        coeff2 = intvec_get_elem(my_vector_rotated, i+1);
+        int_set(coeff, coeff2);
+        intvec_set(col, my_vector_rotated);
+    }
+
+    // intmat_get_col(col, tmp_mat, 0);
+    // for (int i=0; i<10; i++)
+    //   printf("%d ", intvec_get_elem_i64(col, i));
+    // printf("\n\n");
+
+    intvec_set(row, tmp_mat);
+    printf("- Building rot row ended.\n");
+}
 
 /* expand i-th row of Rprime from cseed and 256 + i */
 // static inline void
