@@ -16,7 +16,7 @@
 
 #define N 1 /* number of quadratic equations */
 #define M 1 /* number of quadratic eval equations */
-#define CT_COUNT 1 /* number of ciphertexts */
+#define CT_COUNT 2 /* number of ciphertexts */
 #define GBFV 1 /* if using BFV instead, set to 0 (changes rotation function) */
 #define DEGREE 12288 /* fhe degree */
 //#define DEGREE 2048
@@ -2190,10 +2190,14 @@ __schwartz_zippel_accumulate_z (spolymat_ptr R2i[], spolyvec_ptr r1i[],
   //INTVEC_T (u_, nprime * d, Rq->q->nlimbs);
   INTVEC_T (z4_, 256, Rq->q->nlimbs);
   INTMAT_T (V, lambda, 256, Rq->q->nlimbs);
-  INTMAT_T (vR_, lambda, nprime * d, Rq->q->nlimbs);
-  INTMAT_T (vR, lambda, nprime * d, 2 * Rq->q->nlimbs);
+  // INTMAT_T (vR_, lambda, nprime * d, Rq->q->nlimbs);
+  // INTMAT_T (vR, lambda, nprime * d, 2 * Rq->q->nlimbs);
   INTVEC_T (vRu, lambda, 2 * Rq->q->nlimbs);
   intmat_urandom (V, q, log2q, seed, dom);
+
+  intmat_t vR_, vR;
+  intmat_alloc(vR_, lambda, nprime * d, Rq->q->nlimbs);
+  intmat_alloc(vR, lambda, nprime * d, 2*Rq->q->nlimbs);
 
   // for (i=0; i<V->nrows; i++) {
   //   for (j=0; j<V->ncols; j++) {
