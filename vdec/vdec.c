@@ -355,6 +355,10 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
                           polyvec_t sk, polyvec_t ct0, polyvec_t ct1, 
                           polyvec_t m_delta, unsigned int fhe_degree)
 {
+  struct timeval start_proof, end_proof;
+  long seconds_proof, useconds_proof;
+  double wall_time_proof;
+  gettimeofday(&start_proof, NULL);  // Start timing
     /************************************************************************/
     /*                                                                      */
     /*    OUR CUSTOM PROOF: committing to witness + computing u vectors     */
@@ -1162,6 +1166,14 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
                         Bprime, R2prime_sz, r1prime_sz, lambda / 2 + 1,
                         seed_cont2, params->quad_many);
     printf("finished proof generation\n\n");
+
+    gettimeofday(&end_proof, NULL);  // End timing
+    // Compute the time difference in microseconds
+    seconds_proof  = end_proof.tv_sec  - start_proof.tv_sec;
+    useconds_proof = end_proof.tv_usec - start_proof.tv_usec;
+    wall_time_proof = seconds_proof + useconds_proof/1e6;  // Convert to seconds
+    printf(" --------->  Proof generation:  %f seconds\n", wall_time_proof);
+
 
     /************************************************************************/
     /*                                                                      */
@@ -2360,7 +2372,7 @@ __schwartz_zippel_accumulate_z (spolymat_ptr R2i[], spolyvec_ptr r1i[],
   seconds  = end.tv_sec  - start.tv_sec;
   useconds = end.tv_usec - start.tv_usec;
   wall_time = seconds + useconds/1e6;  // Convert to seconds
-  printf(" + (lambda & ovRDs): execution time: %f seconds\n", wall_time);
+  printf(" ---------> (lambda & ovRDs): execution time: %f seconds\n", wall_time);
 
 
   printf("  - building vRDm (old version)\n");
