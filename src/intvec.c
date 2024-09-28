@@ -214,7 +214,9 @@ intvec_lrot (intvec_t r, const intvec_t a, unsigned int n)
   const unsigned int nelems = r->nelems;
   unsigned int i;
   int_ptr t;
-  INTVEC_T (tmp, r->nelems, r->nlimbs);
+  intvec_t tmp;
+  intvec_alloc(tmp, r->nelems, r->nlimbs);
+  // INTVEC_T (tmp, r->nelems, r->nlimbs);
 
   ASSERT_ERR (r->nelems == a->nelems);
   ASSERT_ERR (r->nlimbs == a->nlimbs);

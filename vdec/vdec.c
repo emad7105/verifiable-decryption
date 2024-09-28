@@ -16,7 +16,7 @@
 
 #define N 1 /* number of quadratic equations */
 #define M 1 /* number of quadratic eval equations */
-#define CT_COUNT 1 /* number of ciphertexts */
+#define CT_COUNT 6 /* number of ciphertexts */
 #define GBFV 1 /* if using BFV instead, set to 0 (changes rotation function) */
 #define DEGREE 12288 /* fhe degree */
 //#define DEGREE 2048
@@ -537,7 +537,9 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
           }
       }
 
-      INTVEC_T(ct1_coeffs_vec2, d * n, Rq->q->nlimbs);
+      // INTVEC_T(ct1_coeffs_vec2, d * n, Rq->q->nlimbs);
+      intvec_t ct1_coeffs_vec2; 
+      intvec_alloc(ct1_coeffs_vec2, d * n, Rq->q->nlimbs);
       intvec_ptr ct1_coeffs2 = &ct1_coeffs_vec2;
 
       //test_gbfv_rot(Rq);
