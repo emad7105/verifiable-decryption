@@ -32,6 +32,7 @@ static inline void _expand_R_i2 (int8_t *Ri, unsigned int ncols, unsigned int i,
                                 const uint8_t cseed[32]);
 
 static void __shuffleauto2x2submatssparse (spolymat_t a);
+static void print_exec_time(struct timeval start, struct timeval end, const char *str);
 static void __shuffleautovecsparse (spolyvec_t r);
 static void __schwartz_zippel_accumulate (
     spolymat_ptr R2i, spolyvec_ptr r1i, poly_ptr r0i, spolymat_ptr Rprime2i[],
@@ -359,9 +360,9 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
                           polyvec_t sk, polyvec_t ct0, polyvec_t ct1, 
                           polyvec_t m_delta, unsigned int fhe_degree)
 {
-  struct timeval start_proof, end_proof, start_rot, end_rot;
-  long seconds_proof, useconds_proof, seconds_rot, useconds_rot;
-  double wall_time_proof, wall_time_rot;
+  struct timeval start_proof, end_proof, start_rot, end_rot, start_debug, end_debug;
+  long seconds_proof, useconds_proof, seconds_rot, useconds_rot,seconds_debug, useconds_debug;
+  double wall_time_proof, wall_time_rot, wall_time_debug;
   gettimeofday(&start_proof, NULL);  // Start timing
     /************************************************************************/
     /*                                                                      */
@@ -2636,4 +2637,12 @@ __schwartz_zippel_accumulate_z (spolymat_ptr R2i[], spolyvec_ptr r1i[],
     polymat_free (vRDm);
   //polymat_free (vRpol);
   polymat_free (mat);
+}
+
+
+static void print_exec_time(struct timeval start, struct timeval end, const char *str) {
+  long seconds  = end.tv_sec  - start.tv_sec;
+  long useconds = end.tv_usec - start.tv_usec;
+  double wall_time = seconds + useconds/1e6;  // Convert to seconds
+  printf(" ---------> (%s): execution time: %f seconds\n", str, wall_time);
 }
