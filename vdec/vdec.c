@@ -16,7 +16,7 @@
 
 #define N 1 /* number of quadratic equations */
 #define M 1 /* number of quadratic eval equations */
-#define CT_COUNT 6 /* number of ciphertexts */
+#define CT_COUNT 10 /* number of ciphertexts */
 #define GBFV 1 /* if using BFV instead, set to 0 (changes rotation function) */
 #define DEGREE 12288 /* fhe degree */
 //#define DEGREE 2048
@@ -186,7 +186,9 @@ int main(void)
     // size calculations
     polys_per_ct = fhe_degree / proof_degree;
     total_polys = CT_COUNT * polys_per_ct;
-    POLYVEC_T(ct1_vec_polys, Rq, total_polys);
+    polyvec_t ct1_vec_polys;
+    polyvec_alloc(ct1_vec_polys, Rq, total_polys);
+    // POLYVEC_T(ct1_vec_polys, Rq, total_polys);
 
     // one-dimensional array in memory of C
     const int64_t *flat_static_ct1 = (const int64_t *)static_ct1;
@@ -234,7 +236,9 @@ int main(void)
     // size calculations
     size_t polys_per_mdelta = fhe_degree / proof_degree;
     total_polys = CT_COUNT * polys_per_mdelta;
-    POLYVEC_T(mdelta_vec_polys, Rq, total_polys);
+    polyvec_t mdelta_vec_polys;
+    polyvec_alloc(mdelta_vec_polys, Rq, total_polys);
+    // POLYVEC_T(mdelta_vec_polys, Rq, total_polys);
 
     // one-dimensional array in memory of C
     const int64_t *flat_static_mdelta = (const int64_t *)static_m_delta;
