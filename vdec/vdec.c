@@ -2696,26 +2696,27 @@ __schwartz_zippel_accumulate_z (spolymat_ptr R2i[], spolyvec_ptr r1i[],
   // poly = polymat_get_elem(vRDs, 0, 0);
   // poly_dump(poly);
 
-
-  intvec_t subvec;
-  INTVEC_T(ct_vec, d * m1, Rq->q->nlimbs);
-  intvec_ptr ct = &ct_vec;  
-  INTVEC_T(vR_row_vec, d * m1, Rq->q->nlimbs);
-  intvec_ptr vR_row = &vR_row_vec;  
+  
 
   int_ptr coeff_vRDs;
-  INT_T (new, 2 * Rq->q->nlimbs);
-
+  
+  #pragma omp parallel for private(j,k, i, coeff_vRDs) shared(vRDs_coeffs, vR_)
   for (i=0; i< m1*d; i++) {
 
     for (k=0; k<CT_COUNT; k++) {
+      intvec_t subvec;
       intvec_get_subvec(subvec, ct1, k*m1*d, m1*d, 1);
+      INTVEC_T(ct_vec, d * m1, Rq->q->nlimbs);
+      intvec_ptr ct = &ct_vec; 
       gbfv_rot_col(ct_vec, subvec, i, Rq);
 
       for (j=0; j<lambda; j++) {
+        INTVEC_T(vR_row_vec, d * m1, Rq->q->nlimbs);
+        intvec_ptr vR_row = &vR_row_vec;
         intmat_get_row(vR_row, vR_, j);
         intvec_get_subvec(subvec, vR_row, k*m1*d, m1*d, 1);
 
+        INT_T (new, 2 * Rq->q->nlimbs);
         intvec_dot(new, subvec, ct_vec);
         int_mod(new, new, Rq->q);
 
@@ -2770,6 +2771,7 @@ __schwartz_zippel_accumulate_z (spolymat_ptr R2i[], spolyvec_ptr r1i[],
   //     }
   //   }
   // }
+  intvec_t subvec;
   printf("putting coeffs into vRDs\n");
   for (i=0; i<vRDs_coeffs->nrows; i++) {
     intmat_get_row(row1, vRDs_coeffs, i);
