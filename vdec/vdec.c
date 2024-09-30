@@ -1716,6 +1716,7 @@ void gbfv_rot_col (intvec_t row, const intvec_t c1, unsigned int l, const polyri
     }
     
     intvec_set(row, tmp_vec);
+    intvec_free(tmp_vec);
     // printf("- Building rot row ended.\n");
 }
 
@@ -1878,6 +1879,7 @@ void gbfv_rot_row_fast (intvec_t row, const intvec_t c1, unsigned int l, const p
     }
     
     intvec_set(row, tmp_vec);
+    intvec_free(tmp_vec);
     // printf("- Building rot row ended.\n");
 }
 
@@ -2542,7 +2544,7 @@ __schwartz_zippel_accumulate_z (spolymat_ptr R2i[], spolyvec_ptr r1i[],
   // }
   // intmat_dump(V);
 
-  polymat_alloc (mat, Rq, nprime, MAX (m1, l));
+  // polymat_alloc (mat, Rq, nprime, MAX (m1, l));
   //polymat_alloc (vRpol, Rq, lambda, nprime);
   polymat_alloc (vRDs, Rq, lambda, m1);
   if (l > 0)
@@ -2925,7 +2927,7 @@ __schwartz_zippel_accumulate_z (spolymat_ptr R2i[], spolyvec_ptr r1i[],
   if (l > 0)
     polymat_free (vRDm);
   //polymat_free (vRpol);
-  polymat_free (mat);
+  // polymat_free (mat);
 }
 
 
