@@ -57,7 +57,7 @@ static void __schwartz_zippel_accumulate_z (
     spolymat_ptr R2i[], spolyvec_ptr r1i[], poly_ptr r0i[], 
     spolymat_ptr R2i2[], spolyvec_ptr r1i2[], poly_ptr r0i2[],
     spolymat_ptr R2t, spolyvec_ptr r1t, poly_ptr r0t, 
-    intvec_t u_, polyvec_t z4, polyvec_t ct1, const uint8_t seed[32],
+    intvec_t u_, polyvec_t z4, intvec_t ct1, const uint8_t seed[32],
     uint32_t dom, const lnp_quad_eval_params_t params,
     const unsigned int nprime);
 
@@ -528,6 +528,8 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     intvec_ptr rot_s = &rot_s_vec;
     INT_T (new, 2 * Rq->q->nlimbs);
 
+    intvec_t ct1_allcoeffs;
+    intvec_alloc(ct1_allcoeffs, d * ct1->nelems, Rq->q->nlimbs);
 
     gettimeofday(&start_rot, NULL);  // Start timing
     for (k=0; k<CT_COUNT; k++) {
@@ -541,6 +543,8 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
               intvec_set_elem(ct1_coeffs, i*d+j, intvec_get_elem(coeffs, j));
           }
       }
+      intvec_get_subvec(subv, ct1_allcoeffs, k*n*d, n*d, 1);
+      intvec_set(subv, ct1_coeffs);
       // INTVEC_T(row, d * m1, Rq->q->nlimbs);
       // gbfv_rot_row_fast(row, ct1_coeffs, 2000, Rq);
       // for (j=0; j<10; j++)
@@ -555,17 +559,21 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
         // intmat_ptr Ds_coeffs = &Ds_coeffs_vec;
         // INTVEC_T(ct1_coeffs_vec2, d * n, Rq->q->nlimbs);
         // intvec_ptr ct1_coeffs2 = &ct1_coeffs_vec2;
+        // INTVEC_T(ct1_coeffs_vec3, d * n, Rq->q->nlimbs);
+        // intvec_ptr ct1_coeffs3 = &ct1_coeffs_vec3;
 
-        // gbfv_rot_col(ct1_coeffs2, ct1_coeffs, 0, Rq);
+        // gbfv_rot_col(ct1_coeffs2, ct1_coeffs, 2000, Rq);
         // for (j=0; j<10; j++)
         //     printf("%lld ", intvec_get_elem_i64(ct1_coeffs2, j));
         // printf("\n");
 
         // gbfv_rot(Ds_coeffs, ct1_coeffs, Rq);
-        // intmat_get_row(ct1_coeffs2, Ds_coeffs, 0);
+        // intmat_get_col(ct1_coeffs3, Ds_coeffs, 2000);
         // for (j=0; j<10; j++)
-        //     printf("%lld ", intvec_get_elem_i64(ct1_coeffs2, j));
+        //     printf("%lld ", intvec_get_elem_i64(ct1_coeffs3, j));
         // printf("\n");
+
+        // printf("col is correct : %d\n", intvec_eq(ct1_coeffs3, ct1_coeffs2));
 
 
         // intvec_t rot_coeffvec;
@@ -1141,7 +1149,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     __schwartz_zippel_accumulate_z (R2prime_sz, r1prime_sz, r0prime_sz,
                                      R2prime_sz2, r1prime_sz2, r0prime_sz2,
                                      R2t, r1t, r0t, sum_tmp, zv,
-                                     ct1, hash0, d - 1, params, nprime);
+                                     ct1_allcoeffs, hash0, d - 1, params, nprime);
 
     printf("schwartz zippel auto...\n");
     for (i = 0; i < lambda / 2; i++) {
@@ -1674,6 +1682,8 @@ void gbfv_rot_col (intvec_t row, const intvec_t c1, unsigned int l, const polyri
         // printf("i = %d\n", i);
         int_set_zero(tmp);
         int rk = i / delta;
+        // if (i<=20)
+        //   printf("rk: %d\n", rk);
 
         // get term in x^k from x^i*c1(x)
         if (i >= l) {
@@ -1683,8 +1693,8 @@ void gbfv_rot_col (intvec_t row, const intvec_t c1, unsigned int l, const polyri
 
         startj = ceil((float)(n-i) / (float)delta);
         endj = floor((float)(n-i+l-1) / (float)delta);
-        if (i<=20)
-          printf("limits %d, %d\n", startj, endj);
+        // if (i<=20)
+        //   printf("limits %d, %d\n", startj, endj);
 
         for (int j=startj; j<=endj; j++) {
           if (matrix[rk][j-startj] != 0) {
@@ -1692,7 +1702,7 @@ void gbfv_rot_col (intvec_t row, const intvec_t c1, unsigned int l, const polyri
             coeff2 = intvec_get_elem(c1, i+j*delta-l);
             int_set(tmp2, coeff2);
             // printf("getting sign %d, %d\n", rk, j-startj);
-            int_mul_sgn_self(tmp2, matrix[rk][i-startj]);
+            int_mul_sgn_self(tmp2, matrix[rk][j-startj]);
             int_add(tmp, tmp, tmp2);
             // if (i<=10)
             //   int_dump(tmp);
@@ -2473,7 +2483,7 @@ __schwartz_zippel_accumulate_z (spolymat_ptr R2i[], spolyvec_ptr r1i[],
                                  spolymat_ptr R2t, spolyvec_ptr r1t,
                                  poly_ptr r0t, 
                                  intvec_t u_, 
-                                 polyvec_t z4, polyvec_t ct1, const uint8_t seed[32],
+                                 polyvec_t z4, intvec_t ct1, const uint8_t seed[32],
                                  uint32_t dom, const lnp_quad_eval_params_t params,
                                  const unsigned int nprime)
 {
@@ -2687,53 +2697,79 @@ __schwartz_zippel_accumulate_z (spolymat_ptr R2i[], spolyvec_ptr r1i[],
   // poly_dump(poly);
 
 
-  intvec_ptr coeffs;
-  intvec_t subvec;    
-  
-  for (k=0; k<CT_COUNT; k++) {
-    printf("vRDs current ciphertext %d\n", k);
-    // getting k-th ct1 coeffs
-    INTVEC_T(ct1_coeffs_vec, d * m1, Rq->q->nlimbs);
-    intvec_ptr ct1_coeffs = &ct1_coeffs_vec;
-    for (i=0; i< m1; i++) {
-        // printf("%d\n", i);
-        poly = polyvec_get_elem(ct1, k*m1 + i);     
-        coeffs = poly_get_coeffvec (poly);
-        for (j=0; j<d; j++) {
-            intvec_set_elem(ct1_coeffs, i*d+j, intvec_get_elem(coeffs, j));
-        }
-    }
-    // printf("going to multiply\n");
-    // #pragma omp parallel for private(i,j,row1,coeff1) shared(vRDs_coeffs, vR_, ct1_coeffs)
-    for (i=0; i<m1*d; i++) {
-      // printf("%d\n", i);
-      intvec_t row11;
-      int_ptr coeff11;
-      INTVEC_T(row, d * m1, Rq->q->nlimbs);
-      INTVEC_T(scaled_row, d * m1, 2 * Rq->q->nlimbs);
-      INTVEC_T(scaled_row2, d * m1, Rq->q->nlimbs);
-      gbfv_rot_row_fast(row, ct1_coeffs, i, Rq);
-      for (j=0; j<lambda; j++) {
-        // printf("lambda %d\n", j);
-        intmat_get_row(row11, vRDs_coeffs, j);
-        coeff11 = intmat_get_elem(vR_, j, i + k*(d*m1));
-        intvec_scale(scaled_row, coeff11, row);
-        intvec_mod(scaled_row2, scaled_row, q);
+  intvec_t subvec;
+  INTVEC_T(ct_vec, d * m1, Rq->q->nlimbs);
+  intvec_ptr ct = &ct_vec;  
+  INTVEC_T(vR_row_vec, d * m1, Rq->q->nlimbs);
+  intvec_ptr vR_row = &vR_row_vec;  
 
-        //#pragma omp critical
-        intvec_add(row11, row11, scaled_row2);
-        
-        if (i%10 == 0)
-          intvec_mod(row11, row11, q);
-        // intvec_redc(row11, row11, q);
-        // if (i == 0) {
-        //   for (int j2=0; j2<10; j2++)
-        //     printf("%lld ", intvec_get_elem_i64(row11, j2));
-        //   printf("\n\n\n\n");
-        // }
+  int_ptr coeff_vRDs;
+  INT_T (new, 2 * Rq->q->nlimbs);
+
+  for (i=0; i< m1*d; i++) {
+
+    for (k=0; k<CT_COUNT; k++) {
+      intvec_get_subvec(subvec, ct1, k*m1*d, m1*d, 1);
+      gbfv_rot_col(ct_vec, subvec, i, Rq);
+
+      for (j=0; j<lambda; j++) {
+        intmat_get_row(vR_row, vR_, j);
+        intvec_get_subvec(subvec, vR_row, k*m1*d, m1*d, 1);
+
+        intvec_dot(new, subvec, ct_vec);
+        int_mod(new, new, Rq->q);
+
+        coeff_vRDs = intmat_get_elem(vRDs_coeffs, j, i);
+        int_add(coeff_vRDs, coeff_vRDs, new);
+
       }
     }
   }
+  
+  // for (k=0; k<CT_COUNT; k++) {
+  //   printf("vRDs current ciphertext %d\n", k);
+  //   // getting k-th ct1 coeffs
+  //   INTVEC_T(ct1_coeffs_vec, d * m1, Rq->q->nlimbs);
+  //   intvec_ptr ct1_coeffs = &ct1_coeffs_vec;
+  //   for (i=0; i< m1; i++) {
+  //       // printf("%d\n", i);
+  //       poly = polyvec_get_elem(ct1, k*m1 + i);     
+  //       coeffs = poly_get_coeffvec (poly);
+  //       for (j=0; j<d; j++) {
+  //           intvec_set_elem(ct1_coeffs, i*d+j, intvec_get_elem(coeffs, j));
+  //       }
+  //   }
+  //   // printf("going to multiply\n");
+  //   // #pragma omp parallel for private(i,j,row1,coeff1) shared(vRDs_coeffs, vR_, ct1_coeffs)
+  //   for (i=0; i<m1*d; i++) {
+  //     // printf("%d\n", i);
+  //     intvec_t row11;
+  //     int_ptr coeff11;
+  //     INTVEC_T(row, d * m1, Rq->q->nlimbs);
+  //     INTVEC_T(scaled_row, d * m1, 2 * Rq->q->nlimbs);
+  //     INTVEC_T(scaled_row2, d * m1, Rq->q->nlimbs);
+  //     gbfv_rot_row_fast(row, ct1_coeffs, i, Rq);
+  //     for (j=0; j<lambda; j++) {
+  //       // printf("lambda %d\n", j);
+  //       intmat_get_row(row11, vRDs_coeffs, j);
+  //       coeff11 = intmat_get_elem(vR_, j, i + k*(d*m1));
+  //       intvec_scale(scaled_row, coeff11, row);
+  //       intvec_mod(scaled_row2, scaled_row, q);
+
+  //       //#pragma omp critical
+  //       intvec_add(row11, row11, scaled_row2);
+        
+  //       if (i%10 == 0)
+  //         intvec_mod(row11, row11, q);
+  //       // intvec_redc(row11, row11, q);
+  //       // if (i == 0) {
+  //       //   for (int j2=0; j2<10; j2++)
+  //       //     printf("%lld ", intvec_get_elem_i64(row11, j2));
+  //       //   printf("\n\n\n\n");
+  //       // }
+  //     }
+  //   }
+  // }
   printf("putting coeffs into vRDs\n");
   for (i=0; i<vRDs_coeffs->nrows; i++) {
     intmat_get_row(row1, vRDs_coeffs, i);
