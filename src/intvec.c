@@ -475,6 +475,27 @@ intvec_dot (int_t r, const intvec_t a, const intvec_t b)
 }
 
 void
+intvec_dot2 (int_t r, const intvec_t a, const intvec_t b, const polyring_t ring)
+{
+  int_srcptr ai, bi;
+  unsigned int i;
+
+  ASSERT_ERR (a->nelems == b->nelems);
+  ASSERT_ERR (r->nlimbs == 2 * a->nlimbs);
+
+  int_set_i64 (r, 0);
+
+  _VEC_FOREACH_ELEM (a, i)
+  {
+    ai = intvec_get_elem_src (a, i);
+    bi = intvec_get_elem_src (b, i);
+    int_addmul (r, ai, bi);
+    // if (i % 1024)
+    int_mod(r, r, ring->q);
+  }
+}
+
+void
 intvec_l2sqr (int_t r, const intvec_t a)
 {
   int_srcptr ai;

@@ -16,7 +16,7 @@
 
 #define N 1 /* number of quadratic equations */
 #define M 1 /* number of quadratic eval equations */
-#define CT_COUNT 1 /* number of ciphertexts */
+#define CT_COUNT 64 /* number of ciphertexts */
 #define GBFV 1 /* if using BFV instead, set to 0 (changes rotation function) */
 #define DEGREE 12288 /* fhe degree */
 //#define DEGREE 2048
@@ -136,7 +136,9 @@ int main(void)
     // Calculate total polynomials needed
     size_t polys_per_ct = fhe_degree / proof_degree;
     size_t total_polys = CT_COUNT * polys_per_ct;
-    POLYVEC_T(ct0_vec_polys, Rq, total_polys);
+    polyvec_t ct0_vec_polys;
+    polyvec_alloc(ct0_vec_polys, Rq, total_polys);
+    // POLYVEC_T(ct0_vec_polys, Rq, total_polys);
     
     // You can treat static_ct0 as a one-dimensional array in memory 
     // since C stores arrays in row-major order. Cast it to a one-dimensional array as follows:
@@ -2637,7 +2639,7 @@ __schwartz_zippel_accumulate_z (spolymat_ptr R2i[], spolyvec_ptr r1i[],
         {
           intmat_get_row (row1, vR_, k);
           coeff1 = intvec_get_elem (vRu, k); // XXX correct
-          intvec_dot (coeff1, row1, u_);
+          intvec_dot2 (coeff1, row1, u_, Rq);
         }
     }
 #if 0
@@ -2704,9 +2706,9 @@ __schwartz_zippel_accumulate_z (spolymat_ptr R2i[], spolyvec_ptr r1i[],
   for (i=0; i< m1*d; i++) {
 
     for (k=0; k<CT_COUNT; k++) {
-      intvec_t subvec;
+      intvec_t subvec, ct_vec;
       intvec_get_subvec(subvec, ct1, k*m1*d, m1*d, 1);
-      INTVEC_T(ct_vec, d * m1, Rq->q->nlimbs);
+      intvec_alloc(ct_vec, d * m1, Rq->q->nlimbs);
       intvec_ptr ct = &ct_vec; 
       gbfv_rot_col(ct_vec, subvec, i, Rq);
 
@@ -2716,14 +2718,20 @@ __schwartz_zippel_accumulate_z (spolymat_ptr R2i[], spolyvec_ptr r1i[],
         intmat_get_row(vR_row, vR_, j);
         intvec_get_subvec(subvec, vR_row, k*m1*d, m1*d, 1);
 
-        INT_T (new, 2 * Rq->q->nlimbs);
-        intvec_dot(new, subvec, ct_vec);
-        int_mod(new, new, Rq->q);
+        int_t new, new_;
+        int_alloc(new, 2 * Rq->q->nlimbs);
+        int_alloc(new_, Rq->q->nlimbs);
+        // INT_T (new, 2 * Rq->q->nlimbs);
+        intvec_dot2(new, subvec, ct_vec, Rq);
+        int_mod(new_, new, Rq->q);
 
         coeff_vRDs = intmat_get_elem(vRDs_coeffs, j, i);
-        int_add(coeff_vRDs, coeff_vRDs, new);
+        int_add(coeff_vRDs, coeff_vRDs, new_);
+        // int_mod(coeff_vRDs, coeff_vRDs, Rq->q);
 
+        int_free(new);
       }
+      intvec_free(ct_vec);
     }
   }
   
@@ -2780,7 +2788,7 @@ __schwartz_zippel_accumulate_z (spolymat_ptr R2i[], spolyvec_ptr r1i[],
         poly = polymat_get_elem(vRDs, i, j);
         poly_set_coeffvec(poly, subvec);
     }
-  }    
+  }
   
   printf("  - computing o(vRDs)\n");
   polymat_auto (ovRDs, vRDs);
@@ -2890,7 +2898,7 @@ __schwartz_zippel_accumulate_z (spolymat_ptr R2i[], spolyvec_ptr r1i[],
       poly_set_zero (r0t); // correct
 
       intmat_get_row (row1, V, k);
-      intvec_dot (tmp, z4_, row1);
+      intvec_dot2 (tmp, z4_, row1, Rq);
       // printf("dump tmp ");
       // int_mod(tmp, tmp, q);
       // int_redc(tmp, tmp, q);
