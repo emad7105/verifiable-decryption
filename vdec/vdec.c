@@ -534,6 +534,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
     intvec_alloc(ct1_allcoeffs, d * ct1->nelems, Rq->q->nlimbs);
 
     gettimeofday(&start_rot, NULL);  // Start timing
+    #pragma omp parallel for private(k,i, subv) shared(ct1, ct1_allcoeffs)
     for (k=0; k<CT_COUNT; k++) {
       // getting k-th ct1 coeffs
       INTVEC_T(ct1_coeffs_vec, d * n, Rq->q->nlimbs);
