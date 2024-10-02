@@ -61,7 +61,8 @@ def Bound():
 
 
 # constants, dont change
-KAPPA = 128    # security param, bit security
+KAPPA = 100    # security param, bit security
+# KAPPA = 128    # security param, bit security
 DELTA128 = 1.0044  # root hermite factor for 128-bit security
 # number of irreducible factors of X^d + 1 modulo each q_i,  q_i = 2l+1 (mod 4l)
 L = 2
@@ -335,6 +336,8 @@ printv(
     f"stdev1 = {stdev1}, log(stdev1/1.55) = {mp.log(stdev1/mpf(1.55),2)}")
 printv(
     f"stdev2 = {stdev2}, log(stdev2/1.55) = {mp.log(stdev2/mpf(1.55),2)}")
+printv(
+    f"stdev4 = {stdev4}, log(stdev4/1.55) = {mp.log(stdev4/mpf(1.55),2)}")
 printv(f"")
 printv(f"Repetition rate")
 printv(f"M1 = {nstr(M1,prec)}")

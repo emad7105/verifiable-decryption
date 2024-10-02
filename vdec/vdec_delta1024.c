@@ -10,7 +10,7 @@
 //#include "vdec_ct.h"
 // #include "vdec_ct_62bits.h"
 //#include "vdec_ct_60bits.h"
-#include "vdec_ct_gbfv_60bits_small.h"
+#include "vdec_ct_gbfv_60bits.h"
 #include <mpfr.h>
 #include <sys/time.h>
 
@@ -18,7 +18,7 @@
 #define M 1 /* number of quadratic eval equations */
 #define CT_COUNT 64 /* number of ciphertexts */
 #define GBFV 1 /* if using BFV instead, set to 0 (changes rotation function) */
-#define DEGREE 3072 /* fhe degree */
+#define DEGREE 12288 /* fhe degree */
 //#define DEGREE 2048
 
 /* Number of elements in an n x n (upper) diagonal matrix. */
@@ -589,7 +589,7 @@ static void vdec_lnp_tbox(uint8_t seed[32], const lnp_quad_eval_params_t params,
         INT_T (new, 2 * Rq->q->nlimbs);
         for (i=0; i<(d * n); i++) {
             int_set_zero(new);
-            gbfv_rot_sum_degree2(new, ct1_coeffs, i, sk_sign, Rq);
+            gbfv_rot_sum(new, ct1_coeffs, i, sk_sign, Rq);
             
             // intmat_get_row(ct1_coeffs2, Ds_coeffs, i);
             // // // gbfv_rot_row(ct1_coeffs2, ct1_coeffs, i, Rq); substitute previous line with this once function works.
@@ -2875,7 +2875,7 @@ __schwartz_zippel_accumulate_z (spolymat_ptr R2i[], spolyvec_ptr r1i[],
 
   int_ptr coeff_vRDs;
   
-  #pragma omp parallel for private(j,k, i, coeff_vRDs) shared(vRDs_coeffs, vR_)
+  // #pragma omp parallel for private(j,k, i, coeff_vRDs) shared(vRDs_coeffs, vR_)
   for (i=0; i< m1*d; i++) {
 
     for (k=0; k<CT_COUNT; k++) {
@@ -2883,7 +2883,7 @@ __schwartz_zippel_accumulate_z (spolymat_ptr R2i[], spolyvec_ptr r1i[],
       intvec_get_subvec(subvec, ct1, k*m1*d, m1*d, 1);
       intvec_alloc(ct_vec, d * m1, Rq->q->nlimbs);
       intvec_ptr ct = &ct_vec; 
-      gbfv_rot_col_degree2(ct_vec, subvec, i, Rq);
+      gbfv_rot_col(ct_vec, subvec, i, Rq);
 
       for (j=0; j<lambda; j++) {
         INTVEC_T(vR_row_vec, d * m1, Rq->q->nlimbs);

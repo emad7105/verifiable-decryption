@@ -6,8 +6,8 @@ log2q = 60                                       # ring modulus bits
 #log2q = 40                                       # ring modulus bits 
 d = 64                                           # ring degree
 
-m1 = 32                                          # length of bounded message s1
-#m1 = 192
+#m1 = 32                                          # length of bounded message s1
+m1 = 48
 alpha = 1                       # bound on s1: l2(s1) <= alpha
 l = 5                                           # length of unbounded message m
 #l = 3
