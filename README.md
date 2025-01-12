@@ -3,7 +3,10 @@
 We implemented the proof-of-decryption protocol presented in the following [paper](https://eprint.iacr.org/2024/1684) in C. We leveraged basic primitives used in [Lazer](https://eprint.iacr.org/2024/1846),
 a library for lattice-based zero-knowledge proofs, and thoroughly extended it to construct our proof of decryption for [GBFV](https://eprint.iacr.org/2024/1587) ciphertexts.  
 
-[Paper](https://eprint.iacr.org/2024/1684): "Blind zkSNARKs for Private Proof Delegation and Verifiable Computation over Encrypted Data"
+### Learning materials
+* Paper: [Blind zkSNARKs for Private Proof Delegation and Verifiable Computation over Encrypted Data](https://eprint.iacr.org/2024/1684)
+* Blog post: [Blind zkSNARKs](https://www.esat.kuleuven.be/cosic/blog/blind-zksnarks/)
+* Video: [Nexus Speaker Series: Jannik Spiessens](https://www.youtube.com/watch?v=TPnmoeOf2w8)
 
 ### Team:
 * [Mariana Gama](https://mmargama.github.io/)
